@@ -1,0 +1,31 @@
+name: Deploy game assets to Supabase Edge
+
+# Ships supabase/bundle.json to the deployed edge function's asset store.
+# The function itself is deployed separately; this only refreshes the client bundle.
+on:
+  push:
+    branches: [claude/zombies-from-mars-game-b2vlf8, main]
+    paths:
+      - 'supabase/bundle.json'
+      - '.github/workflows/deploy-assets.yml'
+  workflow_dispatch: {}
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload asset bundle
+        run: |
+          set -euo pipefail
+          ls -la supabase/bundle.json
+          curl -sS --fail-with-body -X POST \
+            -H "x-upload-token: zfm-upload-x7k2m9q4" \
+            -H "Content-Type: application/json" \
+            --data-binary @supabase/bundle.json \
+            --max-time 180 \
+            "https://rjulfqstzpuqousvovpi.supabase.co/functions/v1/game/assets-upload"
+          echo
+          echo "verifying index.html is served..."
+          curl -sS --fail -o /dev/null -w "GET /game/ -> %{http_code}\n" \
+            "https://rjulfqstzpuqousvovpi.supabase.co/functions/v1/game/"
