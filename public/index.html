@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ZOMBIES FROM MARS — IONBURST ARENA</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #05070c; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; color: #cfd8e3; user-select: none; }
+  canvas#game { position: fixed; inset: 0; display: block; }
+
+  .overlay { position: fixed; inset: 0; z-index: 10; }
+  .hidden { display: none !important; }
+
+  /* ---------- MAIN MENU ---------- */
+  #menu {
+    display: flex; flex-direction: column; align-items: center;
+    background: radial-gradient(ellipse at 50% 30%, #101a2b 0%, #05070c 70%);
+    gap: 10px; z-index: 30; overflow-y: auto; padding: 4vh 12px 60px;
+  }
+  #logo {
+    font-size: clamp(40px, 8vw, 96px); font-weight: 900; letter-spacing: 0.08em;
+    color: #7df9ff;
+    text-shadow: 0 0 12px #21c9ff, 0 0 44px #0a84ff, 0 0 90px #0a84ff;
+    animation: pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { text-shadow: 0 0 12px #21c9ff, 0 0 44px #0a84ff; } 50% { text-shadow: 0 0 22px #6ff, 0 0 80px #0af, 0 0 120px #0af; } }
+  #subtitle { font-size: clamp(13px, 2vw, 20px); letter-spacing: 0.35em; color: #9fe870; text-transform: uppercase; text-shadow: 0 0 12px #3f6; }
+  #gamename { font-size: clamp(16px, 2.6vw, 28px); letter-spacing: .5em; color: #ff5f4f; font-weight: 800; text-shadow: 0 0 16px #f33; margin-top: -6px;}
+  #nickname {
+    margin-top: 18px; padding: 12px 18px; width: min(340px, 80vw); font-size: 18px; text-align: center;
+    background: #0b1220; border: 1px solid #274; border-radius: 8px; color: #e9f2ff; outline: none;
+  }
+  #nickname:focus { border-color: #7df9ff; box-shadow: 0 0 14px #0af6; }
+
+  .pickrow { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 90vw; }
+  .pick {
+    padding: 9px 14px; border: 1px solid #2a3a52; border-radius: 8px; background: #0b1220;
+    cursor: pointer; font-size: 13px; transition: all .15s; min-width: 120px; text-align: center;
+  }
+  .pick small { display:block; color:#7d8aa0; font-size:10px; margin-top:3px; }
+  .pick:hover { border-color: #7df9ff; }
+  .pick.sel { border-color: #9fe870; background: #12240f; box-shadow: 0 0 10px #3f63; }
+  .picklabel { font-size: 11px; letter-spacing: .3em; color: #58708f; margin-top: 8px; text-transform: uppercase; }
+
+  #playBtn {
+    margin-top: 16px; padding: 14px 64px; font-size: 24px; font-weight: 900; letter-spacing: .2em;
+    color: #05070c; background: linear-gradient(180deg, #9fe870, #57b83d); border: 0; border-radius: 10px;
+    cursor: pointer; box-shadow: 0 0 24px #4c4;
+  }
+  #playBtn:hover { filter: brightness(1.15); }
+  #playBtn:disabled { filter: grayscale(1); cursor: not-allowed; }
+  #menuHint { margin-top: 14px; font-size: 12px; color: #58708f; text-align: center; line-height: 1.7; max-width: 720px; }
+  #version { position: fixed; bottom: 12px; font-size: 11px; color: #3d4c61; letter-spacing: .2em; pointer-events: none; }
+  #menuError { color: #ff5f4f; font-size: 13px; height: 16px; }
+
+  /* ---------- HUD ---------- */
+  #hud { pointer-events: none; z-index: 12; }
+  #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 22px; height: 22px; }
+  #crosshair span { position: absolute; background: #cfeaff; box-shadow: 0 0 4px #000; }
+  #crosshair .h { width: 6px; height: 2px; top: 10px; } #crosshair .v { width: 2px; height: 6px; left: 10px; }
+  #crosshair .l { left: 0; } #crosshair .r { right: 0; } #crosshair .t { top: 0; } #crosshair .b { bottom: 0; }
+  #hitmarker { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%) rotate(45deg); width: 26px; height: 26px; opacity: 0; }
+  #hitmarker span { position: absolute; background: #fff; width: 2px; height: 8px; }
+  #hitmarker .a{left:2px;top:2px} #hitmarker .b{right:2px;top:2px} #hitmarker .c{left:2px;bottom:2px} #hitmarker .d{right:2px;bottom:2px}
+  #hitmarker.head span { background: #ff4d4d; }
+
+  #hpwrap { position: absolute; left: 24px; bottom: 24px; width: 260px; }
+  #hpbar { height: 16px; background: #111a; border: 1px solid #2a3a52; border-radius: 4px; overflow: hidden; }
+  #hpfill { height: 100%; width: 100%; background: linear-gradient(90deg, #d33, #6d4); transition: width .15s; }
+  #hptext { font-size: 12px; margin-top: 3px; color: #9db2cc; text-shadow: 0 1px 2px #000; }
+  #coins { font-size: 15px; color: #ffd75e; text-shadow: 0 0 6px #000; margin-top: 4px; font-weight: 700; }
+
+  #ammowrap { position: absolute; right: 24px; bottom: 24px; text-align: right; text-shadow: 0 1px 3px #000; }
+  #weaponname { font-size: 14px; letter-spacing: .2em; color: #7df9ff; }
+  #ammo { font-size: 34px; font-weight: 900; color: #e9f2ff; }
+  #ammo small { font-size: 16px; color: #7d8aa0; }
+  #reloadmsg { color: #ffd75e; font-size: 13px; height: 16px; }
+
+  #cds { position: absolute; right: 24px; bottom: 110px; display: flex; gap: 8px; flex-direction: column; align-items: flex-end;}
+  .cd { display: flex; gap: 6px; align-items: center; font-size: 12px; color: #9db2cc; text-shadow: 0 1px 2px #000; }
+  .cdkey { width: 26px; height: 26px; border: 1px solid #2a3a52; background: #0b1220cc; border-radius: 5px;
+           display: flex; align-items: center; justify-content: center; font-weight: 700; color: #e9f2ff; position: relative; overflow: hidden; }
+  .cdkey .fill { position: absolute; left: 0; bottom: 0; width: 100%; background: #0a84ff55; }
+
+  #tray { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; gap: 6px; }
+  .slot { min-width: 110px; padding: 6px 10px; background: #0b1220bb; border: 1px solid #2a3a52; border-radius: 6px; font-size: 11px; text-align: center; }
+  .slot.sel { border-color: #9fe870; box-shadow: 0 0 8px #3f65; }
+  .slot .price { color: #ffd75e; }
+  .slot .nm { color: #e9f2ff; font-weight: 700; letter-spacing: .06em; }
+  .slot.cant .nm, .slot.cant .price { color: #5a6a80; }
+
+  #killfeed { position: absolute; right: 18px; top: 18px; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+  .kf { font-size: 12px; background: #0b1220bb; border: 1px solid #22314a; padding: 4px 10px; border-radius: 4px; }
+  .kf b { color: #9fe870; } .kf i { color: #ff5f4f; font-style: normal; }
+
+  #topbar { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); text-align: center; }
+  #phase { font-size: 13px; letter-spacing: .3em; color: #9fe870; text-transform: uppercase; text-shadow: 0 0 8px #000; }
+  #timer { font-size: 30px; font-weight: 900; color: #e9f2ff; text-shadow: 0 0 10px #000; }
+  #barwrap { margin-top: 4px; width: 300px; }
+  #barlabel { font-size: 10px; letter-spacing: .25em; color: #ff9d7a; }
+  #barbar { height: 10px; background: #111a; border: 1px solid #513; border-radius: 3px; overflow: hidden; }
+  #barfill { height: 100%; width: 100%; background: linear-gradient(90deg, #f33, #f93); transition: width .2s; }
+  #zlives { font-size: 11px; color: #b76fff; margin-top: 3px; letter-spacing: .15em; text-shadow: 0 1px 2px #000;}
+  #score { position: absolute; left: 24px; top: 18px; font-size: 14px; color: #9db2cc; text-shadow: 0 1px 3px #000; }
+  #score b { color: #ffd75e; font-size: 18px; }
+
+  #readywrap { position: absolute; left: 50%; top: 130px; transform: translateX(-50%); text-align: center; pointer-events: auto; }
+  #readyBtn { padding: 10px 34px; font-size: 16px; font-weight: 800; letter-spacing: .15em; background: #0a84ff; color: #fff; border: 0; border-radius: 8px; cursor: pointer; box-shadow: 0 0 18px #0a84ff88; }
+  #readyBtn:hover { filter: brightness(1.2); }
+  #readyBtn.done { background: #2e4f2c; box-shadow: none; cursor: default; }
+  #readyCount { font-size: 12px; color: #9db2cc; margin-top: 5px; text-shadow: 0 1px 2px #000; }
+
+  #centerMsg { position: absolute; left: 50%; top: 34%; transform: translate(-50%,-50%); font-size: 34px; font-weight: 900;
+               letter-spacing: .1em; color: #e9f2ff; text-shadow: 0 0 22px #0af; text-align: center; opacity: 0; transition: opacity .3s; }
+  #micind { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); color: #ff5f4f; font-weight: 800; letter-spacing: .2em;
+            font-size: 13px; text-shadow: 0 0 10px #f008; }
+  #interact { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-size: 13px; color: #ffd75e; text-shadow: 0 1px 3px #000; }
+
+  #dmgvig { position: fixed; inset: 0; pointer-events: none; z-index: 11; opacity: 0;
+            background: radial-gradient(ellipse at center, transparent 55%, #a0000088 100%); transition: opacity .1s; }
+
+  /* ---------- scoreboard ---------- */
+  #scoreboard { z-index: 20; display: flex; align-items: center; justify-content: center; background: #05070cb0; }
+  #scoreboard table { border-collapse: collapse; min-width: min(640px, 92vw); background: #0b1220ee; border: 1px solid #2a3a52; }
+  #scoreboard th { font-size: 11px; letter-spacing: .3em; color: #58708f; padding: 10px 18px; border-bottom: 1px solid #2a3a52; text-align: left; }
+  #scoreboard td { padding: 8px 18px; font-size: 14px; border-bottom: 1px solid #16233a; }
+  #scoreboard tr.me td { color: #9fe870; font-weight: 700; }
+  #scoreboard td.res { color: #7df9ff; } #scoreboard td.zom { color: #b76fff; }
+
+  /* ---------- chat ---------- */
+  #chat { position: fixed; left: 18px; bottom: 120px; width: min(420px, 60vw); z-index: 14; pointer-events: none; }
+  #chatlog { display: flex; flex-direction: column; gap: 2px; max-height: 200px; overflow: hidden; justify-content: flex-end; }
+  .chatline { font-size: 13px; text-shadow: 0 1px 2px #000; background: #05070c66; padding: 2px 8px; border-radius: 3px; }
+  .chatline .nick { font-weight: 700; color: #7df9ff; } .chatline.zteam .nick { color: #b76fff; }
+  .chatline.sys { color: #8fa3bd; font-style: italic; }
+  #chatinputwrap { margin-top: 6px; pointer-events: auto; }
+  #chatinput { width: 100%; padding: 8px 10px; background: #0b1220ee; border: 1px solid #2a3a52; border-radius: 6px; color: #e9f2ff; font-size: 14px; outline: none; }
+
+  /* ---------- pause ---------- */
+  #pause { z-index: 25; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: #05070cd8; }
+  #pause h1 { font-size: 54px; letter-spacing: .3em; color: #e9f2ff; text-shadow: 0 0 30px #0af; }
+  #pause .controls { font-size: 13px; color: #9db2cc; line-height: 2; text-align: center; column-count: 2; column-gap: 60px;}
+  #backBtn { padding: 12px 44px; font-size: 18px; font-weight: 800; background: #0a84ff; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+
+  /* ---------- death ---------- */
+  #death { z-index: 22; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #30000055; pointer-events: none; }
+  #death h1 { font-size: 84px; font-weight: 900; color: #ff2222; letter-spacing: .1em; text-shadow: 0 0 40px #f00; transform: rotate(-4deg); }
+  #deathBy { font-size: 16px; color: #ffb0a0; text-shadow: 0 1px 3px #000; }
+  #deathTimer { font-size: 22px; color: #e9f2ff; text-shadow: 0 1px 3px #000; }
+
+  /* ---------- end screen ---------- */
+  #end { z-index: 26; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #05070ce8; text-align: center; }
+  #endTitle { font-size: 56px; font-weight: 900; letter-spacing: .1em; }
+  #endTitle.res { color: #7df9ff; text-shadow: 0 0 40px #0af; }
+  #endTitle.zom { color: #b76fff; text-shadow: 0 0 40px #a3f; }
+  #endReason { font-size: 16px; color: #9db2cc; max-width: 600px; }
+  #endNext { font-size: 13px; color: #58708f; }
+
+  #connmsg { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 40; font-size: 18px; color: #ffd75e; text-shadow: 0 0 10px #000; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="dmgvig"></div>
+
+<!-- MAIN MENU -->
+<div id="menu" class="overlay">
+  <div id="logo">IONBURST ARENA</div>
+  <div id="subtitle">Multiplayer Tower Defense - Resistance Vs. Zombies</div>
+  <div id="gamename">ZOMBIES FROM MARS</div>
+  <input id="nickname" maxlength="16" placeholder="Enter your nickname" autocomplete="off">
+  <div id="menuError"></div>
+  <div class="picklabel">Mode</div>
+  <div class="pickrow" id="modeRow"></div>
+  <div class="picklabel">Team</div>
+  <div class="pickrow" id="teamRow"></div>
+  <div class="picklabel" id="clsLabel">Hero</div>
+  <div class="pickrow" id="clsRow"></div>
+  <div class="picklabel" id="secLabel">Secondary Weapon</div>
+  <div class="pickrow" id="secRow"></div>
+  <button id="playBtn">PLAY</button>
+  <div id="menuHint">
+    WASD move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; Mouse look &nbsp;·&nbsp; LMB fire / claw &nbsp;·&nbsp; RMB aim<br>
+    Heroes: E traps menu + scroll &nbsp;·&nbsp; Q build menu + scroll &nbsp;·&nbsp; R reload &nbsp;·&nbsp; 1/2/3 weapons<br>
+    Zombies: Q lunge &nbsp;·&nbsp; E special &nbsp;·&nbsp; F ready up &nbsp;·&nbsp; TAB scoreboard &nbsp;·&nbsp; T chat &nbsp;·&nbsp; V voice &nbsp;·&nbsp; ESC pause
+  </div>
+  <div id="version">ZOMBIES FROM MARS &nbsp;v1.0.0 &nbsp;·&nbsp; IONBURST ARENA &nbsp;·&nbsp; DIRECT SOCKET MODE</div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="overlay hidden">
+  <div id="crosshair"><span class="h l"></span><span class="h r"></span><span class="v t"></span><span class="v b"></span></div>
+  <div id="hitmarker"><span class="a"></span><span class="b"></span><span class="c"></span><span class="d"></span></div>
+  <div id="topbar">
+    <div id="phase">PREPARATION</div>
+    <div id="timer">5:00</div>
+    <div id="barwrap">
+      <div id="barlabel">SAFEHOUSE BARRICADE</div>
+      <div id="barbar"><div id="barfill"></div></div>
+      <div id="zlives"></div>
+    </div>
+  </div>
+  <div id="score">SCORE <b id="scoreval">0</b> &nbsp; <span id="wavecount"></span></div>
+  <div id="readywrap" class="hidden">
+    <button id="readyBtn">READY — START EARLY</button>
+    <div id="readyCount"></div>
+  </div>
+  <div id="killfeed"></div>
+  <div id="hpwrap">
+    <div id="hpbar"><div id="hpfill"></div></div>
+    <div id="hptext">100 HP</div>
+    <div id="coins"></div>
+  </div>
+  <div id="ammowrap">
+    <div id="weaponname">PATRIOT AR</div>
+    <div id="ammo">30 <small>/ 150</small></div>
+    <div id="reloadmsg"></div>
+  </div>
+  <div id="cds"></div>
+  <div id="tray"></div>
+  <div id="centerMsg"></div>
+  <div id="micind" class="hidden">● MICROPHONE ON</div>
+  <div id="interact"></div>
+</div>
+
+<!-- CHAT -->
+<div id="chat" class="hidden">
+  <div id="chatlog"></div>
+  <div id="chatinputwrap" class="hidden">
+    <input id="chatinput" maxlength="200" placeholder="Message... (Enter - send, Esc - close)">
+  </div>
+</div>
+
+<!-- SCOREBOARD -->
+<div id="scoreboard" class="overlay hidden">
+  <table>
+    <thead><tr><th>PLAYER</th><th>TEAM</th><th>KILLS</th><th>DEATHS</th><th>SCORE</th></tr></thead>
+    <tbody id="sbbody"></tbody>
+  </table>
+</div>
+
+<!-- PAUSE -->
+<div id="pause" class="overlay hidden">
+  <h1>PAUSED</h1>
+  <div class="controls">
+    WASD — move<br>SPACE — jump<br>SHIFT — sprint<br>LMB — fire / claw<br>RMB — aim down sights<br>R — reload<br>
+    1 / 2 / 3 — weapons<br>E — traps menu / special<br>Q — build menu / lunge<br>TAB — scoreboard<br>T — chat<br>V (hold) — voice chat
+  </div>
+  <button id="backBtn">BACK TO GAME</button>
+</div>
+
+<!-- DEATH -->
+<div id="death" class="overlay hidden">
+  <h1>YOU DED</h1>
+  <div id="deathBy"></div>
+  <div id="deathTimer"></div>
+</div>
+
+<!-- END -->
+<div id="end" class="overlay hidden">
+  <div id="endTitle"></div>
+  <div id="endReason"></div>
+  <div id="endNext"></div>
+</div>
+
+<div id="connmsg" class="hidden">CONNECTING...</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.js" } }
+</script>
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

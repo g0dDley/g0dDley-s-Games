@@ -1,0 +1,17 @@
+{
+  "name": "zombies-from-mars",
+  "version": "1.0.0",
+  "description": "IONBURST ARENA - Multiplayer Tower Defense - Resistance Vs. Zombies",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:edge": "node scripts/build-edge.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "three": "^0.185.0"
+  }
+}
