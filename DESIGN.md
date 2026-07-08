@@ -2,7 +2,7 @@
 
 > Studio intake: consolidated from the client's written spec (2026-07-07) and the
 > "Zombies Must Die (Zombies from Space)" design document (Google Drive), read in full.
-> Working title on the marquee: **IONBURST ARENA — Zombies From Mars**.
+> Working title on the marquee: **Zombies From Mars**.
 
 ## 1. Pitch
 
@@ -99,7 +99,7 @@ the night skybox are generated in code (canvas), no external assets.
 
 ## 7. UI (English)
 
-- **Main menu**: glowing logo **IONBURST ARENA**, subtitle *"Multiplayer Tower
+- **Main menu**: glowing logo **ZOMBIES FROM MARS**, subtitle *"Multiplayer Tower
   Defense - Resistance Vs. Zombies"*, nickname input (min 2 chars), team/class
   pickers, PLAY, controls hint, version line.
 - **HUD**: crosshair, HP bar, coins, trap list + build list with prices, ammo

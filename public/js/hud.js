@@ -198,7 +198,7 @@ export class HUD {
 export function buildMenu(onPlay) {
   const modeRow = $('modeRow'), teamRow = $('teamRow'), clsRow = $('clsRow'), secRow = $('secRow');
   const clsLabel = $('clsLabel'), secLabel = $('secLabel');
-  const state = { mode: 'multi', team: 'auto', hero: 'tommy', zclass: 'runner', secondary: 'pistol' };
+  const state = { mode: 'solo', team: 'resistance', hero: 'tommy', zclass: 'runner', secondary: 'pistol' };
 
   function mkPick(row, key, label, sub, sel, fn) {
     const d = document.createElement('div');
@@ -213,8 +213,8 @@ export function buildMenu(onPlay) {
 
   function render() {
     modeRow.innerHTML = ''; teamRow.innerHTML = ''; clsRow.innerHTML = ''; secRow.innerHTML = '';
-    mkPick(modeRow, 'multi', 'MULTIPLAYER', 'join a public room', state.mode === 'multi', k => state.mode = k);
-    mkPick(modeRow, 'solo', 'SOLO VS BOTS', 'full lobby of AI bots', state.mode === 'solo', k => state.mode = k);
+    mkPick(modeRow, 'solo', 'SOLO DEMO', 'offline · lobby of AI bots', state.mode === 'solo', k => state.mode = k);
+    mkPick(modeRow, 'multi', 'MULTIPLAYER', 'online · public room', state.mode === 'multi', k => state.mode = k);
     mkPick(teamRow, 'auto', 'AUTO', 'fill a slot', state.team === 'auto', k => state.team = k);
     mkPick(teamRow, 'resistance', 'RESISTANCE', 'max 4 heroes', state.team === 'resistance', k => state.team = k);
     mkPick(teamRow, 'zombie', 'ZOMBIES', 'the horde', state.team === 'zombie', k => state.team = k);

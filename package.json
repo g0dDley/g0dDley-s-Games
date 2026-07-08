@@ -1,7 +1,7 @@
 {
   "name": "zombies-from-mars",
   "version": "1.0.0",
-  "description": "IONBURST ARENA - Multiplayer Tower Defense - Resistance Vs. Zombies",
+  "description": "Zombies From Mars - Multiplayer Tower Defense - Resistance Vs. Zombies",
   "type": "module",
   "main": "server.js",
   "scripts": {

@@ -9,7 +9,7 @@ const hub = createHub();
 const UPLOAD_TOKEN = "zfm-upload-x7k2m9q4";
 const BUCKET = 'game-assets';
 const SB_URL = Deno.env.get('SUPABASE_URL') ?? '';
-const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SECRET_KEY') || '';
 
 type Manifest = Record<string, { type: string; gz: string }>;
 let manifest: Manifest | null = null;
@@ -18,7 +18,7 @@ const cache = new Map<string, Uint8Array>();
 async function loadManifest(): Promise<Manifest> {
   if (manifest) return manifest;
   const r = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/bundle.json`, {
-    headers: { Authorization: `Bearer ${SB_KEY}` },
+    headers: { Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY },
   });
   if (!r.ok) throw new Error('asset bundle not uploaded yet (' + r.status + ')');
   manifest = await r.json();
@@ -58,12 +58,12 @@ Deno.serve(async (req: Request) => {
     try { JSON.parse(body); } catch (_) { return new Response('not json', { status: 400 }); }
     await fetch(`${SB_URL}/storage/v1/bucket`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY, 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: BUCKET, name: BUCKET, public: false }),
     }).catch(() => {});
     const up = await fetch(`${SB_URL}/storage/v1/object/${BUCKET}/bundle.json`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json', 'x-upsert': 'true' },
+      headers: { Authorization: `Bearer ${SB_KEY}`, apikey: SB_KEY, 'Content-Type': 'application/json', 'x-upsert': 'true' },
       body,
     });
     manifest = null;

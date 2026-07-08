@@ -31,5 +31,6 @@ buildMenu((join) => {
       game.roster = m.roster || [];
     }
   });
-  net.connect({ t: 'join', nick: join.nick, team: join.team, cls: join.cls, secondary: join.secondary, solo: !!join.solo });
+  // Solo runs the authoritative sim in this very tab — no server, fully offline.
+  net.connect({ t: 'join', nick: join.nick, team: join.team, cls: join.cls, secondary: join.secondary, solo: !!join.solo, local: !!join.solo });
 });

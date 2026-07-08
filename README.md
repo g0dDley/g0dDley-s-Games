@@ -1,6 +1,6 @@
 # ZOMBIES FROM MARS
 
-**IONBURST ARENA — Multiplayer Tower Defense - Resistance Vs. Zombies**
+**Zombies From Mars — Multiplayer Tower Defense - Resistance Vs. Zombies**
 
 A multiplayer, asymmetric tower-defense shooter in the browser, inspired by
 *Orcs Must Die* and *Fortnite: Save the World*. Built with Three.js and plain
@@ -16,16 +16,20 @@ See [DESIGN.md](DESIGN.md) for the full design brief.
 
 ```bash
 npm install
-npm start          # http://localhost:8080
+npm start          # http://localhost:8080  →  pick "SOLO DEMO" and hit PLAY
 ```
 
-Node 18+ required. The only runtime dependency is `ws`.
+Node 18+ required. The only runtime dependency is `ws` (multiplayer only).
 
 ## Modes
 
-- **Multiplayer** — public rooms of up to 16 players.
-- **Solo vs Bots** — a private room instantly filled to 16 with AI bot
-  heroes and bot zombies. Play either side.
+- **Solo Demo (offline)** — the default. The authoritative sim runs entirely
+  in your browser tab, so it needs **no server and no network** — the lobby is
+  instantly filled to 16 with AI bot heroes and bot zombies, and you play
+  either side. (`public/js/core.js` is the same sim the Node server runs,
+  loaded straight into the page via an in-memory transport in `net.js`.)
+- **Multiplayer (online)** — public rooms of up to 16 real players over
+  WebSockets, served by `server.js`.
 
 ## How a match works
 
