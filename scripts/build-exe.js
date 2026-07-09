@@ -2,6 +2,12 @@
 // solo-demo game server, using esbuild (ESM->CJS transpile, one module at a
 // time so relative requires/paths stay intact) + @yao-pkg/pkg (bundles a
 // Node runtime + the app into a single binary; embeds public/ as assets).
+//
+// Needs real internet access: pkg downloads a prebuilt Node binary per
+// target (~50-100MB) from GitHub releases. Without that route it falls back
+// to compiling Node/V8 from source, which takes far too long to be
+// practical (confirmed in a network-restricted sandbox — killed after 20+
+// minutes of V8 compilation). Run this on a normal dev machine.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';

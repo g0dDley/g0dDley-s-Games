@@ -12,7 +12,20 @@ safehouse at the end of a foggy, post-apocalyptic street ("Zombieville");
 everyone else plays **Player Zombies** marching with the mindless AI horde.
 See [DESIGN.md](DESIGN.md) for the full design brief.
 
-## Run it
+## Easiest way to play
+
+1. Install [Node.js](https://nodejs.org) if you don't already have it (pick the "LTS" download).
+2. Download this repo (Code → Download ZIP on GitHub, or `git clone`) and unzip it.
+3. Double-click the launcher for your OS:
+   - **Windows**: `Play-Windows.bat`
+   - **Mac**: `Play-Mac.command`
+   - **Linux**: `Play-Linux.sh`
+
+The launcher installs the one dependency on first run, starts the server, and opens your browser automatically. Pick **SOLO DEMO** and hit PLAY — no internet connection needed once Node.js is installed. Close the terminal window it opens to stop the game.
+
+(There's no plain `.exe` you can run with zero setup — packaging a full Node runtime into one file needs to download prebuilt binaries from the internet, which wasn't reachable from the environment this was built in. The launcher scripts above are the one-click equivalent; see `scripts/build-exe.js` if you want to build a true standalone binary yourself on a machine with normal internet access.)
+
+## Run it manually
 
 ```bash
 npm install
