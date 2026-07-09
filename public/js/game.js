@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   MAP, PHASE, HEROES, ZCLASSES, WEAPONS, SECONDARIES, TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER,
   LUNGE_CD, LUNGE_TIME, INPUT_RATE, clamp,
+  ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BUILD_TIERS,
 } from './shared.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, makeAIZombie, makeTrap, makeBuild, makeGunMesh } from './models.js';
@@ -94,8 +95,11 @@ export class Game {
       yaw: 0, pitch: 0, onGround: true, alive: true, hp: 100, maxHp: 100,
       coins: 0, score: 0, grappledBy: null, mashHint: 0,
       lungeT: -99, specialT: -99, lungeVec: null, danceUntil: 0, heldUntil: 0,
-      speedBoostUntil: 0, chargeUntil: 0,
+      speedBoostUntil: 0, chargeUntil: 0, invulnUntil: 0,
+      points: 0, items: {}, sprintMult: 1,
     };
+    this.upgradeOpen = false;
+    this.buildRot = 0;         // hero build/trap ghost rotation (R to rotate)
     this.keys = {};
     this.mouseDown = false; this.rmb = false;
     this.pointerLocked = false;
@@ -164,7 +168,7 @@ export class Game {
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.renderer.domElement;
-      if (!this.pointerLocked && this.running && !this.chatOpen && !this.paused) {
+      if (!this.pointerLocked && this.running && !this.chatOpen && !this.paused && !this.upgradeOpen && this.me.alive) {
         this.setPaused(true);
       }
     });
@@ -193,12 +197,25 @@ export class Game {
       return;
     }
     this.keys[e.code] = true;
+    if (this.upgradeOpen) {   // shop swallows most keys
+      if (e.code === 'KeyB' || e.code === 'Escape') this.closeUpgrade();
+      return;
+    }
     switch (e.code) {
       case 'Escape': this.setPaused(!this.paused); break;
       case 'Tab': e.preventDefault(); this.hud.show('scoreboard'); this.hud.renderScoreboard(this.roster, this.me.id); break;
       case 'KeyT': e.preventDefault(); this.openChat(); break;
       case 'KeyV': if (!e.repeat) this.voice.start(); break;
-      case 'KeyR': this.startReload(); break;
+      case 'KeyR':
+        if (this.me.team === 'resistance' && this.menuMode === 'build') { this.buildRot = (this.buildRot + Math.PI / 2) % (Math.PI * 2); this.tickGhost(); }
+        else this.startReload();
+        break;
+      case 'KeyG':
+        if (this.me.team === 'resistance') this.tryTierUpgrade();
+        break;
+      case 'KeyB':
+        if (this.me.team === 'zombie') this.openUpgrade();
+        break;
       case 'Digit1': this.setSlot(0); break;
       case 'Digit2': this.setSlot(1); break;
       case 'Digit3': this.setSlot(2); break;
@@ -213,6 +230,8 @@ export class Game {
       case 'KeyF':
         if ((this.phase === PHASE.PREP || this.phase === PHASE.INTERMISSION) && this.running) {
           document.getElementById('readyBtn').click();
+        } else if (this.me.team === 'resistance') {
+          this.tryLadder();
         }
         break;
       case 'Space':
@@ -287,6 +306,11 @@ export class Game {
     this.world.setBarricadeHp(welcome.bar);
     this.hud.setBarricade(welcome.bar);
 
+    // zombie progression HUD
+    const isZom = this.me.team === 'zombie';
+    this.hud.showZombieUi(isZom);
+    if (isZom) { this.hud.setPoints(this.me.points, false); this.hud.setArmor({ energy: 0, energyMax: 0, shield: 0, shieldMax: 0, helmet: 0, helmetMax: 0 }); }
+
     this.hud.hide('menu');
     this.hud.show('hud');
     this.hud.setPhase(this.phase, this.round);
@@ -325,6 +349,96 @@ export class Game {
   }
 
   refreshTray() { this.hud.renderTray(this.menuMode, this.menuIdx, this.me.coins); }
+
+  // ---- zombie upgrade shop --------------------------------------------------
+  openUpgrade() {
+    if (this.me.team !== 'zombie') return;
+    this.upgradeOpen = true;
+    this.hud.show('upgrade');
+    document.exitPointerLock();
+    this.refreshUpgrade();
+  }
+  closeUpgrade() {
+    this.upgradeOpen = false;
+    this.hud.hide('upgrade');
+    if (this.me.alive && !this.paused && !this.chatOpen) this.lockPointer();
+  }
+  refreshUpgrade() {
+    if (!this.upgradeOpen) return;
+    this.hud.renderUpgradeShop({
+      points: this.me.points, cls: this.me.cls, items: this.me.items,
+      onBuyClass: (key) => this.net.send({ t: 'upClass', cls: key }),
+      onBuyItem: (key) => this.net.send({ t: 'buyItem', item: key }),
+    });
+  }
+  canAffordAnyUpgrade() {
+    const p = this.me.points;
+    for (const k of ZCLASS_ORDER) if (k !== 'walker' && k !== this.me.cls && ZCLASSES[k].cost <= p) return true;
+    for (const k of ZITEM_ORDER) if (!this.me.items[k] && ZITEMS[k].cost <= p) return true;
+    return false;
+  }
+  rebuildMyMesh() {
+    if (!this.myMesh) return;
+    const vis = this.myMesh.visible;
+    this.scene.remove(this.myMesh);
+    this.myMesh = makeCharacter(this.me.team, this.me.cls);
+    this.myMesh.visible = vis;
+    this.scene.add(this.myMesh);
+    this.gunMesh = null; this.updateGunMesh();
+  }
+  swapPlayerMesh(rp, id) {
+    const info = this.roster.find(r => r.id === id) || { team: rp.team, cls: rp.cls, nick: '???' };
+    const tag = rp.mesh.children.find(c => c.isSprite);
+    this.scene.remove(rp.mesh);
+    rp.mesh = makeCharacter(rp.team || info.team, rp.cls);
+    if (tag) rp.mesh.add(tag);
+    this.scene.add(rp.mesh);
+  }
+  retintBuild(id, tier) {
+    const m = this.buildMeshes.get(id);
+    if (!m) return;
+    const col = (BUILD_TIERS[tier - 1] || BUILD_TIERS[0]).color;
+    m.traverse(o => { if (o.material && o.material.color) { o.material = o.material.clone(); o.material.color.setHex(col); } });
+  }
+
+  // ---- hero tier upgrade (look at a build/trap, press G) --------------------
+  tryTierUpgrade() {
+    if (this.me.team !== 'resistance') return;
+    const hit = this.lookAtStructure(9);
+    if (!hit) { this.hud.centerMsg('LOOK AT A WALL OR TRAP TO UPGRADE (G)', 900); return; }
+    this.net.send({ t: hit.type === 'trap' ? 'upTrap' : 'upBuild', id: hit.id });
+  }
+  // Nearest trap/build within range roughly in front of the crosshair.
+  lookAtStructure(range) {
+    const dir = this.aimDir();
+    const o = this.me.pos.clone().add(new THREE.Vector3(0, EYE, 0));
+    let best = null, bestT = range;
+    const test = (id, pos, type) => {
+      const to = pos.clone().sub(o);
+      const t = to.dot(dir);
+      if (t < 0.3 || t > bestT) return;
+      const perp = to.sub(dir.clone().multiplyScalar(t)).length();
+      if (perp < 1.6) { best = { id, type, t }; bestT = t; }
+    };
+    for (const [id, m] of this.trapMeshes) test(id, m.position.clone().add(new THREE.Vector3(0, 0.5, 0)), 'trap');
+    for (const [id, m] of this.buildMeshes) test(id, m.position.clone().add(new THREE.Vector3(0, 1.4, 0)), 'build');
+    return best;
+  }
+
+  // ---- ladders / fire escape (F) -------------------------------------------
+  tryLadder() {
+    const L = this.world.ladders || [];
+    for (const lad of L) {
+      if (Math.abs(this.me.pos.x - lad.x) < 2 && Math.abs(this.me.pos.z - lad.z) < 2) {
+        // toggle between street level and the fire-escape balcony
+        if (this.me.pos.y < lad.top - 0.5) { this.me.pos.y = lad.top; this.me.vel.set(0, 0, 0); this.me.pos.z = lad.z + 1.2; }
+        else { this.me.pos.y = 0; }
+        this.hud.centerMsg(this.me.pos.y > 1 ? 'CLIMBED TO FIRE ESCAPE' : 'DOWN TO THE STREET', 900);
+        return;
+      }
+    }
+    this.hud.centerMsg('NO LADDER HERE', 700);
+  }
 
   refreshWeaponHud() {
     const key = this.slots[this.slotIdx];
@@ -412,7 +526,8 @@ export class Game {
   useSpecial() {
     const t = performance.now() / 1000;
     const zc = ZCLASSES[this.me.cls];
-    if (!zc || t - this.me.specialT < zc.specialCd || !this.me.alive) return;
+    if (!zc || zc.special === 'none') { this.hud.centerMsg('WALKERS HAVE NO SPECIAL — PRESS B TO EVOLVE', 1400); return; }
+    if (t - this.me.specialT < zc.specialCd || !this.me.alive) return;
     this.me.specialT = t;
     const dir = this.aimDir();
     this.net.send({ t: 'special', d: [dir.x, dir.y, dir.z] });
@@ -465,7 +580,8 @@ export class Game {
     const kind = order[this.menuIdx];
     const spec = (this.menuMode === 'traps' ? TRAPS : BUILDS)[kind];
     if (this.me.coins < spec.cost) { this.hud.centerMsg('NOT ENOUGH COINS', 900); return; }
-    const rotY = Math.round(this.me.yaw / (Math.PI / 2)) * (Math.PI / 2);
+    // builds/ramps use the R-controlled rotation; traps snap to facing
+    const rotY = this.menuMode === 'build' ? this.buildRot : Math.round(this.me.yaw / (Math.PI / 2)) * (Math.PI / 2);
     if (this.menuMode === 'traps') this.net.send({ t: 'place', kind, x: p.x, z: p.z, rotY });
     else this.net.send({ t: 'build', kind, x: p.x, y: 0, z: p.z, rotY });
   }
@@ -487,8 +603,11 @@ export class Game {
         this.me.yaw = m.yaw; this.me.vel.set(0, 0, 0);
         this.me.alive = true; this.me.hp = m.hp;
         this.me.grappledBy = null;
+        this.me.invulnUntil = performance.now() / 1000 + (m.invuln || 0);
         this.hud.hideDeath();
+        if (this.upgradeOpen) this.closeUpgrade();
         this.hud.setHp(this.me.hp, this.me.maxHp);
+        if (m.invuln) this.hud.centerMsg('SPAWN PROTECTED', 1400);
         break;
       }
       case 'died': {
@@ -496,6 +615,44 @@ export class Game {
         this.hud.showDeath(m.killer, m.killerIsPlayer, m.respawn);
         break;
       }
+      case 'zpts': {
+        this.me.points = m.pts;
+        if (m.cls) this.me.cls = m.cls;
+        this.hud.setPoints(m.pts, this.canAffordAnyUpgrade());
+        this.refreshUpgrade();
+        break;
+      }
+      case 'armor': {
+        this.me.items = {}; (m.items || []).forEach(k => this.me.items[k] = true);
+        this.me.sprintMult = this.me.items.shoes ? 1.22 : 1;
+        this.hud.setArmor({ energy: m.energy, energyMax: m.energyMax, shield: m.shield, shieldMax: m.shieldMax, helmet: m.helmet, helmetMax: m.helmetMax });
+        this.refreshUpgrade();
+        break;
+      }
+      case 'upgraded': {
+        this.me.cls = m.cls; this.me.points = m.pts;
+        this.me.maxHp = m.maxHp; this.me.hp = m.hp;
+        this.hud.setHp(m.hp, m.maxHp);
+        this.hud.setPoints(m.pts, this.canAffordAnyUpgrade());
+        this.hud.centerMsg('EVOLVED → ' + m.cls.toUpperCase(), 1800);
+        this.rebuildMyMesh();
+        this.refreshUpgrade();
+        break;
+      }
+      case 'humanKill': this.hud.centerMsg('HERO DOWN! +POINTS — PRESS B TO EVOLVE', 2600); break;
+      case 'reclass': {
+        const rp = this.players.get(m.id);
+        if (rp) { rp.cls = m.cls; this.swapPlayerMesh(rp, m.id); }
+        break;
+      }
+      case 'reitem': { const rp = this.players.get(m.id); if (rp) rp.items = m.items; break; }
+      case 'buildTier': {
+        const b = this.buildData.get(m.id);
+        if (b) { b.tier = m.tier; this.retintBuild(m.id, m.tier); }
+        this.hud.centerMsg('WALL UPGRADED → TIER ' + m.tier, 900);
+        break;
+      }
+      case 'trapTier': this.hud.centerMsg('TRAP UPGRADED → TIER ' + m.tier, 900); break;
       case 'dmg': {
         this.me.hp = m.hp;
         this.hud.setHp(m.hp, this.me.maxHp);
@@ -887,6 +1044,7 @@ export class Game {
 
     const base = me.team === 'resistance' ? HEROES[me.cls] : ZCLASSES[me.cls];
     let speed = this.keys.ShiftLeft || this.keys.ShiftRight ? base.sprint : base.walk;
+    speed *= (me.sprintMult || 1);      // running-shoes item
     if (t < me.speedBoostUntil) speed *= 1.6;
     if (t < me.chargeUntil) speed = 20;
     if (this.rmb && me.team === 'resistance') speed *= 0.55;
@@ -929,10 +1087,17 @@ export class Game {
     me.pos.z = clamp(me.pos.z, MAP.minZ + 1, MAP.maxZ - 1);
     this.collideSolids(me.pos);
 
-    // my mesh follows
+    // my mesh follows; body faces the direction of travel while moving
     if (this.myMesh) {
       this.myMesh.position.copy(me.pos);
-      this.myMesh.rotation.y = me.yaw + Math.PI;
+      if (this.moving && (Math.abs(me.vel.x) + Math.abs(me.vel.z)) > 0.1) {
+        const want = Math.atan2(me.vel.x, me.vel.z);
+        let d = want - this.myMesh.rotation.y;
+        while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+        this.myMesh.rotation.y += d * 0.4;
+      } else {
+        this.myMesh.rotation.y = me.yaw + Math.PI;
+      }
       this.animateLimbs(this.myMesh, this.moving ? (this.keys.ShiftLeft ? 2 : 1) : 0, t, dancing);
     }
   }
@@ -1008,11 +1173,17 @@ export class Game {
       const py = rp.prev ? (rp.prev.y || 0) : (rp.target.y || 0);
       const pz = rp.prev ? rp.prev.z : rp.target.z;
       rp.mesh.position.set(px + (rp.target.x - px) * f, py + ((rp.target.y || 0) - py) * f, pz + (rp.target.z - pz) * f);
-      let pyaw = rp.prev ? rp.prev.yaw : rp.target.yaw;
-      let dy = rp.target.yaw - pyaw;
-      if (dy > Math.PI) dy -= Math.PI * 2; if (dy < -Math.PI) dy += Math.PI * 2;
-      rp.mesh.rotation.y = pyaw + dy * f + Math.PI;
-      const moved = rp.prev && (Math.abs(rp.target.x - rp.prev.x) + Math.abs(rp.target.z - rp.prev.z)) > 0.03;
+      const ddx = rp.prev ? rp.target.x - rp.prev.x : 0, ddz = rp.prev ? rp.target.z - rp.prev.z : 0;
+      const moved = (Math.abs(ddx) + Math.abs(ddz)) > 0.03;
+      // face the direction of travel while walking; otherwise face aim yaw
+      if (moved) {
+        const want = Math.atan2(ddx, ddz);
+        let cur = rp.mesh.rotation.y, d = want - cur;
+        while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
+        rp.mesh.rotation.y = cur + d * 0.35;
+      } else {
+        rp.mesh.rotation.y = (rp.target.yaw || 0) + Math.PI;
+      }
       this.animateLimbs(rp.mesh, moved ? 1 : 0, t + (rp.seed || 0), false);
     }
     for (const a of this.aiz.values()) {
@@ -1058,19 +1229,28 @@ export class Game {
     if (this.me.team === 'zombie') {
       const zc = ZCLASSES[this.me.cls];
       const lungeFrac = clamp(1 - (t - this.me.lungeT) / LUNGE_CD, 0, 1);
-      const spFrac = clamp(1 - (t - this.me.specialT) / zc.specialCd, 0, 1);
+      const spFrac = zc.specialCd > 0 ? clamp(1 - (t - this.me.specialT) / zc.specialCd, 0, 1) : 0;
       this.hud.renderCooldowns([
         { key: 'Q', label: 'LUNGE', frac: lungeFrac },
-        { key: 'E', label: zc.special.toUpperCase(), frac: spFrac },
+        { key: 'E', label: zc.special === 'none' ? '— (EVOLVE)' : zc.special.toUpperCase(), frac: spFrac },
       ]);
       const nearDoor = this.me.pos.z > MAP.doorZ - 6;
-      this.hud.el.interact.textContent = nearDoor ? 'CLAW THE BARRICADE!' : '';
+      this.hud.el.interact.textContent = nearDoor ? 'CLAW THE BARRICADE!' : (this.canAffordAnyUpgrade() ? 'B — EVOLVE / BUY GEAR' : '');
     } else {
       this.hud.renderCooldowns([
         { key: 'Q', label: 'BUILD MENU', frac: 0 },
         { key: 'E', label: 'TRAPS MENU', frac: 0 },
       ]);
-      this.hud.el.interact.textContent = this.me.grappledBy ? 'MASH SPACE!' : '';
+      let hint = this.me.grappledBy ? 'MASH SPACE!' : '';
+      if (!hint && this.me.alive) {
+        const st = this.lookAtStructure(9);
+        if (st) hint = 'G — UPGRADE TIER';
+        else {
+          const near = (this.world.ladders || []).some(l => Math.abs(this.me.pos.x - l.x) < 2 && Math.abs(this.me.pos.z - l.z) < 2);
+          if (near) hint = this.me.pos.y > 1 ? 'F — CLIMB DOWN' : 'F — CLIMB FIRE ESCAPE';
+        }
+      }
+      this.hud.el.interact.textContent = hint;
     }
     if (performance.now() < this.reloadUntil) this.refreshWeaponHud();
   }
@@ -1101,6 +1281,6 @@ export class Game {
     this.ghost.visible = true;
     const g = this.menuMode === 'traps' ? MAP.gridTrap : MAP.gridBuild;
     this.ghost.position.set(Math.round(p.x / g) * g, 0, Math.round(p.z / g) * g);
-    this.ghost.rotation.y = Math.round(this.me.yaw / (Math.PI / 2)) * (Math.PI / 2);
+    this.ghost.rotation.y = this.menuMode === 'build' ? this.buildRot : Math.round(this.me.yaw / (Math.PI / 2)) * (Math.PI / 2);
   }
 }

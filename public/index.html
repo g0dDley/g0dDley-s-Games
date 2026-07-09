@@ -121,6 +121,47 @@
   #dmgvig { position: fixed; inset: 0; pointer-events: none; z-index: 11; opacity: 0;
             background: radial-gradient(ellipse at center, transparent 55%, #a0000088 100%); transition: opacity .1s; }
 
+  /* ---------- zombie points + armor ---------- */
+  #zpts { position: absolute; left: 50%; top: 92px; transform: translateX(-50%); text-align: center; display: none; }
+  #zpts.on { display: block; }
+  #zptsNum { font-size: 40px; font-weight: 900; color: #b7ff6f; text-shadow: 0 0 18px #6f4, 0 0 40px #3d2; letter-spacing: .04em; }
+  #zptsLbl { font-size: 11px; letter-spacing: .35em; color: #8fd06a; text-transform: uppercase; }
+  #zptsHint { font-size: 12px; color: #ffd75e; margin-top: 3px; text-shadow: 0 1px 3px #000; }
+  #armorwrap { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+  .armorbar { height: 9px; background: #111a; border: 1px solid #2a3a52; border-radius: 3px; overflow: hidden; position: relative; }
+  .armorbar i { position: absolute; inset: 0; right: auto; height: 100%; transition: width .12s; display: block; }
+  #arEnergy i { background: linear-gradient(90deg,#3fd0ff,#7df9ff); }
+  #arShield i { background: linear-gradient(90deg,#9aa4b3,#e6edf5); }
+  #arHelmet i { background: linear-gradient(90deg,#ffb14e,#ffd98a); }
+  .armorbar span { position: absolute; right: 4px; top: -1px; font-size: 8px; color: #cfe; letter-spacing: .1em; }
+
+  /* ---------- zombie upgrade shop ---------- */
+  #upgrade { z-index: 24; display: flex; flex-direction: column; align-items: center; justify-content: center;
+             gap: 12px; background: #04060bd8; pointer-events: auto; }
+  #upgrade h2 { font-size: 26px; letter-spacing: .18em; color: #b7ff6f; text-shadow: 0 0 20px #4d3; }
+  #upPts { font-size: 15px; color: #b7ff6f; }
+  #upPts b { color: #e9ffd0; }
+  .upsection { font-size: 11px; letter-spacing: .3em; color: #58708f; text-transform: uppercase; margin-top: 6px; }
+  .upgrid { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
+  .upcard { width: 150px; padding: 10px; border: 1px solid #2a3a52; border-radius: 9px; background: #0b1220;
+            cursor: pointer; transition: all .12s; display: flex; flex-direction: column; gap: 5px; }
+  .upcard:hover { border-color: #b7ff6f; box-shadow: 0 0 12px #6f43; }
+  .upcard.owned { border-color: #57b83d; background: #12240f; cursor: default; }
+  .upcard.cant { opacity: .5; cursor: not-allowed; }
+  .upcard .cardhd { display: flex; justify-content: space-between; align-items: baseline; }
+  .upcard .nm { font-weight: 800; color: #e9f2ff; font-size: 13px; letter-spacing: .04em; }
+  .upcard .cost { color: #ffd75e; font-size: 12px; font-weight: 700; }
+  .upcard .dsc { font-size: 10.5px; color: #9db2cc; line-height: 1.35; }
+  .upcard .tag { font-size: 9px; letter-spacing: .2em; color: #57b83d; }
+  #upClose { margin-top: 10px; padding: 9px 30px; font-size: 14px; font-weight: 800; letter-spacing: .12em;
+             background: #0a84ff; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+  #upHint { font-size: 12px; color: #58708f; }
+
+  /* ---------- weapon preview (menu) ---------- */
+  #wpnPreviewWrap { margin-top: 6px; text-align: center; }
+  #wpnPreview { width: 220px; height: 96px; background: #0a0f1a; border: 1px solid #22314a; border-radius: 8px; }
+  #wpnPreviewName { font-size: 11px; color: #7df9ff; letter-spacing: .2em; margin-top: 3px; }
+
   /* ---------- scoreboard ---------- */
   #scoreboard { z-index: 20; display: flex; align-items: center; justify-content: center; background: #05070cb0; }
   #scoreboard table { border-collapse: collapse; min-width: min(640px, 92vw); background: #0b1220ee; border: 1px solid #2a3a52; }
@@ -181,6 +222,10 @@
   <div class="pickrow" id="clsRow"></div>
   <div class="picklabel" id="secLabel">Secondary Weapon</div>
   <div class="pickrow" id="secRow"></div>
+  <div id="wpnPreviewWrap">
+    <canvas id="wpnPreview" width="440" height="192"></canvas>
+    <div id="wpnPreviewName"></div>
+  </div>
   <button id="playBtn">PLAY</button>
   <div id="menuHint">
     WASD move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; Mouse look &nbsp;·&nbsp; LMB fire / claw &nbsp;·&nbsp; RMB aim<br>
@@ -209,9 +254,19 @@
     <div id="readyCount"></div>
   </div>
   <div id="killfeed"></div>
+  <div id="zpts">
+    <div id="zptsNum">0</div>
+    <div id="zptsLbl">Zombie Points</div>
+    <div id="zptsHint">B — Upgrade</div>
+  </div>
   <div id="hpwrap">
     <div id="hpbar"><div id="hpfill"></div></div>
     <div id="hptext">100 HP</div>
+    <div id="armorwrap">
+      <div class="armorbar" id="arEnergy"><i></i><span>ENERGY</span></div>
+      <div class="armorbar" id="arShield"><i></i><span>SHIELD</span></div>
+      <div class="armorbar" id="arHelmet"><i></i><span>HELMET</span></div>
+    </div>
     <div id="coins"></div>
   </div>
   <div id="ammowrap">
@@ -257,6 +312,19 @@
   <h1>YOU DED</h1>
   <div id="deathBy"></div>
   <div id="deathTimer"></div>
+  <div id="deathUpgradeHint" style="font-size:13px;color:#b7ff6f;margin-top:8px;">Press B to spend your points before you respawn</div>
+</div>
+
+<!-- ZOMBIE UPGRADE SHOP -->
+<div id="upgrade" class="overlay hidden">
+  <h2>ZOMBIE UPGRADES</h2>
+  <div id="upPts">POINTS: <b>0</b></div>
+  <div class="upsection">Evolve — become a deadlier zombie (points spent, keeps your gear)</div>
+  <div class="upgrid" id="upClassGrid"></div>
+  <div class="upsection">Gear — cheap, stack &amp; mix freely</div>
+  <div class="upgrid" id="upItemGrid"></div>
+  <button id="upClose">CLOSE (B / ESC)</button>
+  <div id="upHint">You can upgrade any time you have the points — even while dead, before you respawn.</div>
 </div>
 
 <!-- END -->

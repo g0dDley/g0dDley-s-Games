@@ -1,7 +1,47 @@
 // HUD, menus, chat, scoreboard, overlays.
-import { TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER, WEAPONS, HEROES, ZCLASSES, BARRICADE_MAX_HP, PHASE } from './shared.js';
+import { TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER, WEAPONS, HEROES, ZCLASSES,
+         ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BARRICADE_MAX_HP, PHASE } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
+
+// 2D weapon preview illustration — recognisable silhouette per weapon category.
+export function drawWeaponPreview(canvas, key) {
+  const w = WEAPONS[key]; if (!canvas || !w) return;
+  const g = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#0a0f1a'; g.fillRect(0, 0, W, H);
+  g.save();
+  g.translate(W * 0.16, H * 0.58);
+  const S = W / 440;                 // scale to design units
+  g.scale(S, S);
+  const metal = '#3a4250', dark = '#20252e', wood = '#6a4a26', accent = '#7df9ff';
+  const box = (x, y, ww, hh, c) => { g.fillStyle = c; g.fillRect(x, y, ww, hh); };
+  if (key === 'ar' || key === 'smg') {
+    box(0, 0, 210, 26, metal); box(150, -6, 60, 20, dark); box(40, 26, 34, 46, dark); // mag
+    box(196, 4, 60, 12, dark); box(-6, 2, 30, 20, wood);                             // barrel/stock
+    if (key === 'smg') { box(0, 0, 130, 22, metal); box(110, 4, 40, 10, dark); }
+  } else if (key === 'sniper') {
+    box(-20, 6, 300, 18, metal); box(60, -14, 90, 14, dark); box(70, -20, 16, 12, dark); // scope
+    box(-40, 8, 34, 22, wood);
+  } else if (key === 'pistol') {
+    box(60, 0, 90, 22, metal); box(70, 20, 34, 50, dark);
+  } else if (key === 'icebreaker' || key === 'pump' || key === 'doublebarrel') {
+    box(0, 4, 250, 22, wood); box(200, 6, 80, 8, dark); box(206, 16, 80, 8, dark);   // twin barrels
+    box(30, 26, 30, 40, dark);
+  } else if (key === 'crossbow') {
+    box(20, 6, 200, 16, wood); box(70, -46, 12, 100, dark);                          // bow limb
+    box(210, 8, 70, 8, accent);                                                      // bolt
+  } else { // melee
+    box(30, -50, 14, 120, wood); box(10, -60, 54, 22, metal);
+  }
+  g.restore();
+  g.fillStyle = accent; g.font = 'bold 20px sans-serif';
+  g.fillText(w.label, 14, 26);
+  g.fillStyle = '#9db2cc'; g.font = '12px sans-serif';
+  const stat = w.melee ? `${w.dmg} dmg melee` : `${w.dmg}${w.pellets > 1 ? '×' + w.pellets : ''} dmg · ${(1 / w.rof).toFixed(1)}/s`;
+  g.fillText(stat, 14, H - 12);
+}
 
 export class HUD {
   constructor() {
@@ -19,9 +59,31 @@ export class HUD {
       pause: $('pause'), death: $('death'), deathBy: $('deathBy'), deathTimer: $('deathTimer'),
       end: $('end'), endTitle: $('endTitle'), endReason: $('endReason'), endNext: $('endNext'),
       connmsg: $('connmsg'), crosshair: $('crosshair'),
+      zpts: $('zpts'), zptsNum: $('zptsNum'), zptsHint: $('zptsHint'),
+      arEnergy: $('arEnergy'), arShield: $('arShield'), arHelmet: $('arHelmet'),
+      upgrade: $('upgrade'), upPts: $('upPts'), upClassGrid: $('upClassGrid'), upItemGrid: $('upItemGrid'),
     };
     this._centerT = null;
     this._hitT = null;
+  }
+
+  // ---- zombie points + armor ------------------------------------------------
+  showZombieUi(on) { this.el.zpts.classList.toggle('on', !!on); }
+
+  setPoints(pts, canUpgrade) {
+    this.el.zptsNum.textContent = Math.floor(pts);
+    this.el.zptsHint.textContent = canUpgrade ? 'B — UPGRADE AVAILABLE ✦' : 'B — Upgrade';
+    this.el.zptsHint.style.color = canUpgrade ? '#b7ff6f' : '#7d8aa0';
+  }
+
+  setArmor(a) {
+    const bar = (el, hp, max) => {
+      el.style.display = max > 0 ? 'block' : 'none';
+      if (max > 0) el.querySelector('i').style.width = `${Math.max(0, Math.min(1, hp / max)) * 100}%`;
+    };
+    bar(this.el.arEnergy, a.energy, a.energyMax);
+    bar(this.el.arShield, a.shield, a.shieldMax);
+    bar(this.el.arHelmet, a.helmet, a.helmetMax);
   }
 
   show(name) { this.el[name].classList.remove('hidden'); }
@@ -192,6 +254,46 @@ export class HUD {
     this.el.endReason.textContent = reason;
     this.el.endNext.textContent = 'Next match starting shortly...';
   }
+
+  // ---- zombie upgrade shop --------------------------------------------------
+  // st = { points, cls, items:{key:true}, onBuyClass(key), onBuyItem(key) }
+  renderUpgradeShop(st) {
+    this.el.upPts.innerHTML = `POINTS: <b>${Math.floor(st.points)}</b>`;
+    const mkCard = (grid, { nm, cost, dsc, tag, owned, affordable, onClick }) => {
+      const c = document.createElement('div');
+      c.className = 'upcard' + (owned ? ' owned' : (affordable ? '' : ' cant'));
+      c.innerHTML = `<div class="cardhd"><span class="nm"></span><span class="cost"></span></div>
+                     <div class="dsc"></div><div class="tag"></div>`;
+      c.querySelector('.nm').textContent = nm;
+      c.querySelector('.cost').textContent = owned ? 'OWNED' : cost + ' pts';
+      c.querySelector('.dsc').textContent = dsc;
+      c.querySelector('.tag').textContent = tag || '';
+      if (!owned && affordable) c.onclick = onClick;
+      grid.appendChild(c);
+    };
+    // classes (evolve)
+    this.el.upClassGrid.innerHTML = '';
+    for (const key of ZCLASS_ORDER) {
+      if (key === 'walker') continue;
+      const z = ZCLASSES[key];
+      mkCard(this.el.upClassGrid, {
+        nm: z.name.toUpperCase(), cost: z.cost, dsc: z.desc,
+        tag: key === st.cls ? 'CURRENT FORM' : `${z.hp} HP`,
+        owned: key === st.cls, affordable: st.points >= z.cost,
+        onClick: () => st.onBuyClass(key),
+      });
+    }
+    // items (gear)
+    this.el.upItemGrid.innerHTML = '';
+    for (const key of ZITEM_ORDER) {
+      const it = ZITEMS[key];
+      mkCard(this.el.upItemGrid, {
+        nm: it.name.toUpperCase(), cost: it.cost, dsc: it.desc,
+        tag: '', owned: !!st.items[key], affordable: st.points >= it.cost,
+        onClick: () => st.onBuyItem(key),
+      });
+    }
+  }
 }
 
 // ---- main menu builder ---------------------------------------------------------
@@ -211,30 +313,39 @@ export function buildMenu(onPlay) {
     return d;
   }
 
+  const previewWrap = $('wpnPreviewWrap'), previewCanvas = $('wpnPreview'), previewName = $('wpnPreviewName');
+  function showPreview(key) {
+    drawWeaponPreview(previewCanvas, key);
+    previewName.textContent = 'PREVIEW · ' + (WEAPONS[key] ? WEAPONS[key].label : '');
+  }
+
   function render() {
     modeRow.innerHTML = ''; teamRow.innerHTML = ''; clsRow.innerHTML = ''; secRow.innerHTML = '';
     mkPick(modeRow, 'solo', 'SOLO DEMO', 'offline · lobby of AI bots', state.mode === 'solo', k => state.mode = k);
     mkPick(modeRow, 'multi', 'MULTIPLAYER', 'online · public room', state.mode === 'multi', k => state.mode = k);
     mkPick(teamRow, 'auto', 'AUTO', 'fill a slot', state.team === 'auto', k => state.team = k);
     mkPick(teamRow, 'resistance', 'RESISTANCE', 'max 4 heroes', state.team === 'resistance', k => state.team = k);
-    mkPick(teamRow, 'zombie', 'ZOMBIES', 'the horde', state.team === 'zombie', k => state.team = k);
+    mkPick(teamRow, 'zombie', 'ZOMBIES', 'evolve from a Walker', state.team === 'zombie', k => state.team = k);
 
     const zombieMode = state.team === 'zombie';
-    clsLabel.textContent = zombieMode ? 'Zombie Class' : 'Hero';
+    clsLabel.textContent = zombieMode ? 'Zombie' : 'Hero';
     secLabel.style.display = zombieMode ? 'none' : '';
     secRow.style.display = zombieMode ? 'none' : '';
+    previewWrap.style.display = zombieMode ? 'none' : '';
 
     if (zombieMode) {
-      for (const [k, z] of Object.entries(ZCLASSES)) {
-        mkPick(clsRow, k, z.name.toUpperCase(), z.desc, state.zclass === k, key => state.zclass = key);
-      }
+      const note = document.createElement('div');
+      note.className = 'pick sel'; note.style.cursor = 'default'; note.style.minWidth = '260px';
+      note.innerHTML = `<div>START AS A WALKER</div><small>Earn points by advancing &amp; killing Heroes, then press B in-game to evolve and buy gear.</small>`;
+      clsRow.appendChild(note);
     } else {
       for (const [k, h] of Object.entries(HEROES)) {
-        mkPick(clsRow, k, h.name.toUpperCase(), h.desc, state.hero === k, key => state.hero = key);
+        mkPick(clsRow, k, h.name.toUpperCase(), h.desc, state.hero === k, key => { state.hero = key; });
       }
       for (const s of ['pistol', 'smg', 'sniper', 'pump']) {
-        mkPick(secRow, s, WEAPONS[s].label, `${WEAPONS[s].dmg} dmg`, state.secondary === s, key => state.secondary = key);
+        mkPick(secRow, s, WEAPONS[s].label, `${WEAPONS[s].dmg} dmg`, state.secondary === s, key => { state.secondary = key; showPreview(key); });
       }
+      showPreview(HEROES[state.hero].main);
     }
   }
   render();
@@ -243,7 +354,7 @@ export function buildMenu(onPlay) {
     const nick = $('nickname').value.trim();
     if (nick.length < 2) { $('menuError').textContent = 'Nickname must be at least 2 characters'; return; }
     $('menuError').textContent = '';
-    onPlay({ nick, team: state.team, cls: state.team === 'zombie' ? state.zclass : state.hero, secondary: state.secondary, solo: state.mode === 'solo' });
+    onPlay({ nick, team: state.team, cls: state.team === 'zombie' ? 'walker' : state.hero, secondary: state.secondary, solo: state.mode === 'solo' });
   };
   $('nickname').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('playBtn').click(); e.stopPropagation(); });
 }

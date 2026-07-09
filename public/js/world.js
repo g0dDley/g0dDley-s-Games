@@ -320,6 +320,36 @@ export function buildWorld(scene) {
   barricade.position.set(0, 0, MAP.doorZ + 0.1);
   scene.add(barricade);
 
+  // ---- fire escapes + ladders beside the safehouse door --------------------
+  // Heroes press F at a ladder to climb one storey to a balcony (a safer
+  // respawn / vantage point). Ladders sit on the buildings flanking the door.
+  const ladders = [];
+  const ladderMat = new THREE.MeshLambertMaterial({ color: 0x2b2f36 });
+  const grateMat = new THREE.MeshLambertMaterial({ color: 0x3a4048 });
+  for (const side of [-1, 1]) {
+    const lx = side * 12.5, lz = MAP.doorZ - 11, top = 3.4;
+    // balcony platform
+    const balc = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 3.2), grateMat);
+    balc.position.set(lx, top, lz + 1.2);
+    scene.add(balc);
+    solids.push({ min: [lx - 2.5, top - 0.2, lz - 0.4], max: [lx + 2.5, top, lz + 2.8] });
+    // railings
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.9, 0.1), ladderMat);
+    rail.position.set(lx, top + 0.5, lz + 2.7); scene.add(rail);
+    // ladder rails + rungs down to the street
+    for (const rx of [-0.35, 0.35]) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, top, 0.1), ladderMat);
+      r.position.set(lx + rx, top / 2, lz - 0.2); scene.add(r);
+    }
+    for (let ry = 0.4; ry < top; ry += 0.5) {
+      const rung = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 0.08), ladderMat);
+      rung.position.set(lx, ry, lz - 0.2); scene.add(rung);
+    }
+    const lamp = new THREE.PointLight(0xffcc88, 6, 12, 2);
+    lamp.position.set(lx, top + 1.4, lz + 1); scene.add(lamp);
+    ladders.push({ x: lx, z: lz, top });
+  }
+
   // zombie spawn end: sickly green glow + crashed saucer hint
   const spawnLight = new THREE.PointLight(0x66ff88, 30, 60, 1.4);
   spawnLight.position.set(0, 8, MAP.spawnZ - 6);
@@ -353,5 +383,5 @@ export function buildWorld(scene) {
     barricade.userData.shake = shake;
   }
 
-  return { solids, flickers, barricade, setBarricadeHp };
+  return { solids, flickers, barricade, setBarricadeHp, ladders };
 }

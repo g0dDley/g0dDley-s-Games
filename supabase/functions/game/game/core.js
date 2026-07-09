@@ -7,6 +7,7 @@ import {
   LUNGE_CD, LUNGE_TIME, GRAPPLE_DPS_TICK, GRAPPLE_TICK, GRAPPLE_MASH_NEED,
   CLAW_BARRICADE_DMG, AI_KINDS, WAVES, ZLIVES_BASE, ZLIVES_PER_PLAYER,
   TRAPS, BUILDS, BURN, BLEED, RESPAWN_HERO, RESPAWN_ZOMBIE, clamp, dist2,
+  ZPOINTS, ZITEMS, ZCLASS_ORDER, RESPAWN_INVULN, TRAP_TIERS, BUILD_TIERS,
 } from '../public/js/shared.js';
 
 let nextEntity = 1;
@@ -15,6 +16,33 @@ const eid = () => (nextEntity++).toString(36);
 function now() { return Date.now() / 1000; }
 function rand(a, b) { return a + Math.random() * (b - a); }
 function pickRand(arr) { return arr[(Math.random() * arr.length) | 0]; }
+
+// ---- zombie armor helpers ---------------------------------------------------
+function newArmor() {
+  return { items: {}, helmetHp: 0, shieldHp: 0, shieldMax: 0, energyHp: 0, energyMax: 0,
+           sprintMult: 1, lungeCdMult: 1, lastHumanHitT: 0 };
+}
+// Recompute armor maxes from owned items and refill to full (called on spawn/buy).
+function refillArmor(p) {
+  const a = p.arm;
+  a.helmetMax = 0; a.shieldMax = 0; a.energyMax = 0; a.sprintMult = 1; a.lungeCdMult = 1;
+  for (const key of Object.keys(a.items)) {
+    const it = ZITEMS[key]; if (!it) continue;
+    if (it.helmetHp) a.helmetMax += it.helmetHp;
+    if (it.shieldHp) a.shieldMax += it.shieldHp;
+    if (it.energyHp) a.energyMax += it.energyHp;
+    if (it.sprintMult) a.sprintMult *= it.sprintMult;
+    if (it.lungeCdMult) a.lungeCdMult *= it.lungeCdMult;
+  }
+  a.helmetHp = a.helmetMax; a.shieldHp = a.shieldMax; a.energyHp = a.energyMax;
+}
+function armorMsg(p) {
+  const a = p.arm;
+  return { t: 'ev', k: 'armor', helmet: Math.round(a.helmetHp), helmetMax: a.helmetMax | 0,
+           shield: Math.round(a.shieldHp), shieldMax: a.shieldMax | 0,
+           energy: Math.round(a.energyHp), energyMax: a.energyMax | 0,
+           items: Object.keys(a.items) };
+}
 
 const BOT_HERO_NAMES = ['Sarge Brick', 'Tex Winchester', 'Doc Hollow', 'Ranger Kate'];
 const BOT_ZOMBIE_NAMES = [
@@ -80,6 +108,9 @@ class Room {
       grapple: null,           // hero: {zid, mash} / zombie: {hid}
       lastClaw: 0, lastMoveT: now(),
       speedBoostUntil: 0, statuses: {},
+      // zombie progression
+      points: ZPOINTS.start, reachedDoor: false, lastPtZ: 0, ptSync: 0,
+      arm: newArmor(), invulnUntil: 0,
     };
     if (team === 'resistance') {
       const hk = HEROES[joinMsg.cls] ? joinMsg.cls : 'tommy';
@@ -87,8 +118,9 @@ class Room {
       p.secondary = SECONDARIES.includes(joinMsg.secondary) ? joinMsg.secondary : 'pistol';
       p.maxHp = HEROES[hk].hp;
     } else {
-      p.cls = ZCLASSES[joinMsg.cls] ? joinMsg.cls : 'runner';
-      p.maxHp = ZCLASSES[p.cls].hp;
+      // Every player zombie starts as a Walker and upgrades with points in-game.
+      p.cls = 'walker';
+      p.maxHp = ZCLASSES.walker.hp;
     }
     this.players.set(p.id, p);
     this.spawnPlayer(p);
@@ -124,18 +156,22 @@ class Room {
   // ---- bots (solo mode) -------------------------------------------------------
   addBot(team, cls, nick) {
     const fakeClient = { id: 'bot' + eid(), send() {}, sendRaw() {} };
+    const zombie = team !== 'resistance';
     const p = {
       id: fakeClient.id, client: fakeClient, nick, team, isBot: true,
-      cls, secondary: 'pistol',
+      cls: zombie ? 'walker' : cls, secondary: 'pistol',
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, anim: 0,
       hp: 100, maxHp: 100, alive: false, deadUntil: 0, killedBy: null,
       coins: START_COINS, kills: 0, deaths: 0, score: 0, ready: true,
       lastFire: 0, lastMelee: 0, lastLunge: -99, lungeUntil: 0, lastSpecial: -99,
       grapple: null, lastClaw: 0, lastMoveT: now(),
       speedBoostUntil: 0, statuses: {},
-      bot: { wanderT: 0, tx: 0, tz: 0, laneX: rand(-MAP.roadHalfW + 1.5, MAP.roadHalfW - 1.5), trapT: 0, placed: 0 },
+      points: zombie ? rand(200, 900) : 0, reachedDoor: false, lastPtZ: 0, ptSync: 0,
+      arm: newArmor(), invulnUntil: 0,
+      bot: { wanderT: 0, tx: 0, tz: 0, laneX: rand(-MAP.roadHalfW + 1.5, MAP.roadHalfW - 1.5),
+             trapT: 0, placed: 0, wantClass: zombie ? pickRand(['runner', 'stalker', 'belcher', 'brute']) : null, upT: 0 },
     };
-    p.maxHp = team === 'resistance' ? HEROES[cls].hp : ZCLASSES[cls].hp;
+    p.maxHp = team === 'resistance' ? HEROES[cls].hp : ZCLASSES[p.cls].hp;
     this.players.set(p.id, p);
     this.spawnPlayer(p);
     return p;
@@ -250,8 +286,17 @@ class Room {
       p.anim = 0;
       return;
     }
-    const zc = ZCLASSES[p.cls];
     const b = p.bot;
+    // spend points like a real player: upgrade class first, then grab items
+    if (t - b.upT > 3) {
+      b.upT = t;
+      const want = ZCLASSES[b.wantClass];
+      if (p.cls === 'walker' && want && p.points >= want.cost) this.onUpgradeClass(p, { cls: b.wantClass });
+      else for (const key of ['helmet', 'shoes', 'lid', 'riot', 'chain', 'energy']) {
+        if (!p.arm.items[key] && p.points >= ZITEMS[key].cost && Math.random() < 0.4) { this.onBuyItem(p, { item: key }); break; }
+      }
+    }
+    const zc = ZCLASSES[p.cls];
     if (p.grapple) return; // busy chewing on a hero
 
     // nearest hero
@@ -328,23 +373,30 @@ class Room {
     }));
   }
   trapList() {
-    return [...this.traps.values()].map(t => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rotY: t.rotY, hp: t.hp, owner: t.owner }));
+    return [...this.traps.values()].map(t => ({ id: t.id, kind: t.kind, x: t.x, z: t.z, rotY: t.rotY, hp: t.hp, owner: t.owner, tier: t.tier || 1 }));
   }
   buildList() {
-    return [...this.builds.values()].map(b => ({ id: b.id, kind: b.kind, x: b.x, y: b.y, z: b.z, rotY: b.rotY, hp: b.hp }));
+    return [...this.builds.values()].map(b => ({ id: b.id, kind: b.kind, x: b.x, y: b.y, z: b.z, rotY: b.rotY, hp: b.hp, tier: b.tier || 1 }));
   }
 
   spawnPlayer(p) {
     p.alive = true;
+    if (p.team === 'zombie') p.maxHp = ZCLASSES[p.cls].hp;   // reflect any class upgrade
     p.hp = p.maxHp;
     p.statuses = {};
     p.grapple = null;
+    p.invulnUntil = now() + RESPAWN_INVULN;                  // brief spawn protection
     if (p.team === 'resistance') {
-      p.x = rand(-6, 6); p.y = 0; p.z = MAP.doorZ - rand(6, 10); p.yaw = 0; // face down the road
+      // heroes respawn up on the fire-escape balcony beside the safehouse door
+      p.x = rand(-7, 7); p.y = 0; p.z = MAP.doorZ - rand(5, 9); p.yaw = 0; // face down the road
     } else {
       p.x = rand(-8, 8); p.y = 0; p.z = MAP.spawnZ + rand(0, 8); p.yaw = Math.PI; // face the safehouse
+      refillArmor(p);
+      p.lastPtZ = p.z; p.reachedDoor = false;
+      p.client.send(armorMsg(p));
+      p.client.send({ t: 'ev', k: 'zpts', pts: Math.floor(p.points), cls: p.cls });
     }
-    p.client.send({ t: 'ev', k: 'spawn', pos: [p.x, p.y, p.z], yaw: p.yaw, hp: p.hp });
+    p.client.send({ t: 'ev', k: 'spawn', pos: [p.x, p.y, p.z], yaw: p.yaw, hp: p.hp, invuln: RESPAWN_INVULN });
   }
 
   broadcast(msg, exceptId) {
@@ -410,7 +462,86 @@ class Room {
       case 'ready': this.onReady(p); break;
       case 'chat': this.onChat(p, m); break;
       case 'voice': this.onVoice(p, m); break;
+      case 'upClass': this.onUpgradeClass(p, m); break;
+      case 'buyItem': this.onBuyItem(p, m); break;
+      case 'upBuild': this.onUpgradeBuild(p, m); break;
+      case 'upTrap': this.onUpgradeTrap(p, m); break;
     }
+  }
+
+  // ---- zombie progression ---------------------------------------------------
+  addPoints(p, n) {
+    if (p.team !== 'zombie' || n <= 0) return;
+    p.points += n;
+    const t = now();
+    if (t - p.ptSync > 0.4 || n >= 100) {   // throttle the HUD sync, but push kills instantly
+      p.ptSync = t;
+      p.client.send({ t: 'ev', k: 'zpts', pts: Math.floor(p.points), cls: p.cls });
+    }
+  }
+
+  onUpgradeClass(p, m) {
+    if (p.team !== 'zombie') return;
+    const key = String(m.cls);
+    const spec = ZCLASSES[key];
+    if (!spec || key === p.cls) return;
+    if (p.points < spec.cost) return;
+    p.points -= spec.cost;
+    p.cls = key;
+    p.maxHp = spec.hp;
+    if (p.alive) { p.hp = Math.min(p.hp + (spec.hp - p.hp) * 0.5 + 60, spec.hp); }  // partial heal on upgrade
+    p.client.send({ t: 'ev', k: 'upgraded', cls: key, pts: Math.floor(p.points), hp: Math.round(p.hp), maxHp: spec.hp });
+    this.broadcast({ t: 'ev', k: 'reclass', id: p.id, cls: key }, p.id);
+    this.broadcast({ t: 'ev', k: 'roster', roster: this.rosterList() });
+  }
+
+  onBuyItem(p, m) {
+    if (p.team !== 'zombie') return;
+    const key = String(m.item);
+    const it = ZITEMS[key];
+    if (!it || p.arm.items[key]) return;   // one of each
+    if (p.points < it.cost) return;
+    p.points -= it.cost;
+    p.arm.items[key] = true;
+    refillArmor(p);
+    p.client.send({ t: 'ev', k: 'zpts', pts: Math.floor(p.points), cls: p.cls });
+    p.client.send(armorMsg(p));
+    this.broadcast({ t: 'ev', k: 'reitem', id: p.id, items: Object.keys(p.arm.items) }, p.id);
+  }
+
+  onUpgradeBuild(p, m) {
+    if (p.team !== 'resistance' || !p.alive) return;
+    const b = this.builds.get(m.id);
+    if (!b) return;
+    const nextTier = (b.tier || 1);
+    if (nextTier >= BUILD_TIERS.length) return;   // already max
+    const spec = BUILD_TIERS[nextTier];           // cost to reach tier index+1
+    if (p.coins < spec.cost) return;
+    p.coins -= spec.cost;
+    b.tier = nextTier + 1;
+    const baseHp = BUILDS[b.kind].hp;
+    const mult = BUILD_TIERS[b.tier - 1].hpMult;
+    b.maxHp = Math.round(baseHp * mult);
+    b.hp = b.maxHp;
+    this.broadcast({ t: 'ev', k: 'buildTier', id: b.id, tier: b.tier, hp: b.hp });
+    p.client.send({ t: 'ev', k: 'coins', coins: p.coins });
+  }
+
+  onUpgradeTrap(p, m) {
+    if (p.team !== 'resistance' || !p.alive) return;
+    const tr = this.traps.get(m.id);
+    if (!tr) return;
+    const nextTier = (tr.tier || 1);
+    if (nextTier >= TRAP_TIERS.length) return;
+    const spec = TRAP_TIERS[nextTier];
+    if (p.coins < spec.cost) return;
+    p.coins -= spec.cost;
+    tr.tier = nextTier + 1;
+    const base = TRAPS[tr.kind];
+    tr.maxHp = Math.round(base.hp * TRAP_TIERS[tr.tier - 1].hpMult);
+    tr.hp = tr.maxHp;
+    this.broadcast({ t: 'ev', k: 'trapTier', id: tr.id, tier: tr.tier, hp: tr.hp });
+    p.client.send({ t: 'ev', k: 'coins', coins: p.coins });
   }
 
   onInput(p, m) {
@@ -420,7 +551,7 @@ class Room {
     const dt = Math.min(0.5, t - p.lastMoveT);
     p.lastMoveT = t;
     const base = p.team === 'resistance' ? HEROES[p.cls] : ZCLASSES[p.cls];
-    let maxSpeed = base.sprint * (t < p.speedBoostUntil ? 1.6 : 1);
+    let maxSpeed = base.sprint * (t < p.speedBoostUntil ? 1.6 : 1) * (p.arm ? p.arm.sprintMult : 1);
     if (p.lungeUntil > t) maxSpeed = Math.max(maxSpeed, 18);
     if (p.statuses.charge && p.statuses.charge > t) maxSpeed = Math.max(maxSpeed, 20);
     const nx = clamp(+m.x || 0, -MAP.walkHalfW - 14, MAP.walkHalfW + 14);
@@ -492,7 +623,7 @@ class Room {
   onLunge(p, m) {
     if (p.team !== 'zombie' || !p.alive || this.phase !== PHASE.COMBAT) return;
     const t = now();
-    if (t - p.lastLunge < LUNGE_CD) return;
+    if (t - p.lastLunge < LUNGE_CD * (p.arm ? p.arm.lungeCdMult : 1)) return;
     p.lastLunge = t;
     p.lungeUntil = t + LUNGE_TIME;
     this.broadcast({ t: 'ev', k: 'lunge', id: p.id });
@@ -551,9 +682,9 @@ class Room {
           this.damageAI(hit.ent, dmg, p, wkey);
           if (w.burn) this.applyStatus(hit.ent, 'burn');
         } else if (hit.type === 'pz') {
-          let dmg = w.dmg;
-          if (hit.head) { dmg *= hero.headshot; anyHead = true; }
-          this.damageZombiePlayer(hit.ent, dmg, p, wkey);
+          const headMult = hit.head ? hero.headshot : 1;
+          if (hit.head) anyHead = true;
+          this.damageZombiePlayer(hit.ent, w.dmg, p, wkey, false, headMult);
           if (w.burn) this.applyStatusP(hit.ent, 'burn');
         } else if (hit.type === 'build') {
           // friendly structures: no damage from heroes
@@ -666,10 +797,10 @@ class Room {
     if (Math.abs(x) > MAP.walkHalfW || z < MAP.spawnZ + 24 || z > MAP.doorZ - 2) return;
     for (const t of this.traps.values()) if (t.x === x && t.z === z) return; // occupied
     p.coins -= spec.cost;
-    const tr = { id: eid(), kind: m.kind, x, z, rotY: +m.rotY || 0, hp: spec.hp, owner: p.id,
+    const tr = { id: eid(), kind: m.kind, x, z, rotY: +m.rotY || 0, hp: spec.hp, maxHp: spec.hp, tier: 1, owner: p.id,
                  armT: 0, cycleT: now(), lastShot: 0, held: null, tickT: 0 };
     this.traps.set(tr.id, tr);
-    this.broadcast({ t: 'ev', k: 'trapAdd', trap: { id: tr.id, kind: tr.kind, x, z, rotY: tr.rotY, hp: tr.hp, owner: p.id } });
+    this.broadcast({ t: 'ev', k: 'trapAdd', trap: { id: tr.id, kind: tr.kind, x, z, rotY: tr.rotY, hp: tr.hp, owner: p.id, tier: 1 } });
     p.client.send({ t: 'ev', k: 'coins', coins: p.coins });
   }
 
@@ -687,7 +818,7 @@ class Room {
       if (b.x === x && b.z === z && b.y === y && b.kind === m.kind && Math.abs(b.rotY - rotY) < 0.01) return;
     }
     p.coins -= spec.cost;
-    const b = { id: eid(), kind: m.kind, x, y, z, rotY, hp: spec.hp };
+    const b = { id: eid(), kind: m.kind, x, y, z, rotY, hp: spec.hp, maxHp: spec.hp, tier: 1 };
     this.builds.set(b.id, b);
     this.broadcast({ t: 'ev', k: 'buildAdd', build: b });
     p.client.send({ t: 'ev', k: 'coins', coins: p.coins });
@@ -763,16 +894,45 @@ class Room {
     }
   }
 
-  damageZombiePlayer(z, dmg, attacker, cause, isTrap) {
+  // Layered soak: Energy Barrier -> Shields -> Helmet -> flesh. headMult (>1 for
+  // headshots) is suppressed while any helmet HP remains.
+  damageZombiePlayer(z, dmg, attacker, cause, isTrap, headMult) {
     if (!z.alive || this.phase !== PHASE.COMBAT) return;
-    if (isTrap) dmg *= ZOMBIE_TRAP_RESIST;
-    z.hp -= dmg;
+    const t = now();
+    if (t < z.invulnUntil) return;
+    const a = z.arm;
+    headMult = headMult || 1;
+    let d = isTrap ? dmg * ZOMBIE_TRAP_RESIST : dmg;
+    // Energy Barrier — trap-immune while up; only Hero weapons deplete it.
+    if (a.energyMax > 0 && a.energyHp > 0) {
+      if (isTrap) return;                 // invulnerable to traps
+      a.lastHumanHitT = t;
+      if (d <= a.energyHp) { a.energyHp -= d; z.client.send(armorMsg(z)); return; }
+      d -= a.energyHp; a.energyHp = 0;
+    } else if (!isTrap) {
+      a.lastHumanHitT = t;
+    }
+    // Shields
+    if (a.shieldHp > 0) {
+      if (d <= a.shieldHp) { a.shieldHp -= d; z.client.send(armorMsg(z)); return; }
+      d -= a.shieldHp; a.shieldHp = 0;
+    }
+    // Helmet (blocks headshot bonus while intact)
+    const helmetWasUp = a.helmetHp > 0;
+    if (a.helmetHp > 0) {
+      if (d <= a.helmetHp) { a.helmetHp -= d; z.client.send(armorMsg(z)); return; }
+      d -= a.helmetHp; a.helmetHp = 0;
+    }
+    if (!helmetWasUp && headMult > 1) d *= headMult;
+    z.hp -= d;
+    if (a.helmetMax || a.shieldMax || a.energyMax) z.client.send(armorMsg(z));
     z.client.send({ t: 'ev', k: 'dmg', hp: Math.max(0, z.hp), from: attacker ? attacker.nick : cause });
     if (z.hp <= 0) this.killPlayer(z, attacker, cause, isTrap);
   }
 
   damageHero(h, dmg, attacker, cause) {
     if (!h.alive || this.phase !== PHASE.COMBAT) return;
+    if (now() < h.invulnUntil) return;    // spawn protection
     h.hp -= dmg;
     h.client.send({ t: 'ev', k: 'dmg', hp: Math.max(0, h.hp), from: attacker ? attacker.nick : cause });
     if (h.hp <= 0) this.killPlayer(h, attacker, cause, false);
@@ -794,6 +954,11 @@ class Room {
       if (attacker.team === 'resistance' && reward) {
         attacker.coins += reward;
         attacker.client.send({ t: 'ev', k: 'coins', coins: attacker.coins });
+      }
+      // Killing a Hero is a huge zombie payday — instantly funds an upgrade.
+      if (attacker.team === 'zombie' && p.team === 'resistance') {
+        this.addPoints(attacker, ZPOINTS.humanKill);
+        attacker.client.send({ t: 'ev', k: 'humanKill' });
       }
     }
     let respawn = 0;
@@ -969,13 +1134,20 @@ class Room {
       }
     }
 
-    // player zombie auto-claw at barricade + statuses
+    // player zombie: points from forward progress, energy regen, auto-claw
     for (const p of this.players.values()) {
       if (p.team !== 'zombie' || !p.alive) continue;
       this.tickStatusesPlayer(p, t);
+      if (p.z > p.lastPtZ) { this.addPoints(p, (p.z - p.lastPtZ) * ZPOINTS.perMeter); p.lastPtZ = p.z; }
+      if (!p.reachedDoor && p.z > MAP.doorZ - 4) { p.reachedDoor = true; this.addPoints(p, ZPOINTS.reachDoor); }
+      const a = p.arm;
+      if (a.energyMax > 0 && a.energyHp < a.energyMax && t - a.lastHumanHitT >= ZITEMS.energy.regenDelay) {
+        a.energyHp = a.energyMax; p.client.send(armorMsg(p));
+      }
       if (p.z > MAP.doorZ - 2.8 && Math.abs(p.x) < 8 && t - p.lastClaw > 0.8) {
         p.lastClaw = t;
         this.damageBarricade(CLAW_BARRICADE_DMG, p);
+        this.addPoints(p, ZPOINTS.clawBarricade);
         this.broadcast({ t: 'ev', k: 'swing', id: p.id });
       }
     }
@@ -1057,6 +1229,7 @@ class Room {
   tickTraps(t, dt) {
     for (const tr of [...this.traps.values()]) {
       const spec = TRAPS[tr.kind];
+      const dmul = TRAP_TIERS[(tr.tier || 1) - 1].dmgMult;
       switch (tr.kind) {
         case 'mine': {
           if (tr.armT > t) break;
@@ -1066,9 +1239,9 @@ class Room {
             tr.armT = t + spec.rearm;
             this.broadcast({ t: 'ev', k: 'trapFire', id: tr.id, kind: 'mine' });
             const r2 = spec.radius * spec.radius;
-            for (const a of [...this.ai.values()]) if (!a.dead && dist2(tr.x, tr.z, a.x, a.z) < r2) this.damageAI(a, spec.dmg, this.players.get(tr.owner) || null, 'mine');
+            for (const a of [...this.ai.values()]) if (!a.dead && dist2(tr.x, tr.z, a.x, a.z) < r2) this.damageAI(a, spec.dmg * dmul, this.players.get(tr.owner) || null, 'mine');
             for (const p of this.players.values()) {
-              if (p.team === 'zombie' && p.alive && dist2(tr.x, tr.z, p.x, p.z) < r2) this.damageZombiePlayer(p, spec.dmg, this.players.get(tr.owner) || null, 'mine', true);
+              if (p.team === 'zombie' && p.alive && dist2(tr.x, tr.z, p.x, p.z) < r2) this.damageZombiePlayer(p, spec.dmg * dmul, this.players.get(tr.owner) || null, 'mine', true);
             }
             this.broadcast({ t: 'ev', k: 'boom', x: tr.x, y: 0.3, z: tr.z, r: spec.radius });
           }
@@ -1085,8 +1258,8 @@ class Room {
               this.broadcast({ t: 'ev', k: 'trapState', id: tr.id, open: false });
             } else if (t - tr.tickT >= 1) {
               tr.tickT = t;
-              if (v.ai) { v.ai.statuses.held = tr.holdUntil; this.damageAI(v.ai, spec.dmg, this.players.get(tr.owner) || null, 'beartrap'); }
-              else this.damageZombiePlayer(v.pz, spec.dmg, this.players.get(tr.owner) || null, 'beartrap', true);
+              if (v.ai) { v.ai.statuses.held = tr.holdUntil; this.damageAI(v.ai, spec.dmg * dmul, this.players.get(tr.owner) || null, 'beartrap'); }
+              else this.damageZombiePlayer(v.pz, spec.dmg * dmul, this.players.get(tr.owner) || null, 'beartrap', true);
             }
             break;
           }
@@ -1104,8 +1277,8 @@ class Room {
           if (t - tr.tickT < spec.tick) break;
           tr.tickT = t;
           for (const v of this.trapVictims(tr.x, tr.z, 1.6)) {
-            if (v.ai) { v.ai.statuses.slow = t + 0.8; this.damageAI(v.ai, spec.dmg, this.players.get(tr.owner) || null, 'spikes'); this.applyStatus(v.ai, 'bleed'); }
-            else this.damageZombiePlayer(v.pz, spec.dmg, this.players.get(tr.owner) || null, 'spikes', true);
+            if (v.ai) { v.ai.statuses.slow = t + 0.8; this.damageAI(v.ai, spec.dmg * dmul, this.players.get(tr.owner) || null, 'spikes'); this.applyStatus(v.ai, 'bleed'); }
+            else this.damageZombiePlayer(v.pz, spec.dmg * dmul, this.players.get(tr.owner) || null, 'spikes', true);
           }
           break;
         }
@@ -1116,8 +1289,8 @@ class Room {
           if (!active || t - tr.tickT < spec.tick) break;
           tr.tickT = t;
           for (const v of this.trapVictims(tr.x, tr.z, 2.4)) {
-            if (v.ai) { this.damageAI(v.ai, spec.dmg, this.players.get(tr.owner) || null, 'flame'); this.applyStatus(v.ai, 'burn'); }
-            else { this.damageZombiePlayer(v.pz, spec.dmg, this.players.get(tr.owner) || null, 'flame', true); this.applyStatusP(v.pz, 'burn'); }
+            if (v.ai) { this.damageAI(v.ai, spec.dmg * dmul, this.players.get(tr.owner) || null, 'flame'); this.applyStatus(v.ai, 'burn'); }
+            else { this.damageZombiePlayer(v.pz, spec.dmg * dmul, this.players.get(tr.owner) || null, 'flame', true); this.applyStatusP(v.pz, 'burn'); }
           }
           break;
         }
@@ -1132,7 +1305,7 @@ class Room {
           }
           if (target) {
             tr.lastShot = t;
-            this.damageAI(target, spec.dmg, this.players.get(tr.owner) || null, 'turret');
+            this.damageAI(target, spec.dmg * dmul, this.players.get(tr.owner) || null, 'turret');
             this.broadcast({ t: 'ev', k: 'turretShot', id: tr.id, to: [target.x, target.y + 1.2, target.z] });
           }
           break;

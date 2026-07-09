@@ -74,16 +74,51 @@ export const WEAPONS = {
 };
 
 // ---- Player zombie classes --------------------------------------------------
+// Every player zombie STARTS as a Walker and upgrades with points (see ZPOINTS).
 export const ZCLASSES = {
-  runner:  { name: 'Runner',  hp: 300, walk: 6.2, sprint: 9.4,  radius: 0.55, height: 1.8,
-             special: 'adrenaline', specialCd: 12, desc: 'Average civilian. E: Adrenaline speed surge.' },
-  stalker: { name: 'Stalker', hp: 220, walk: 6.8, sprint: 10.6, radius: 0.5,  height: 1.7,
-             special: 'leap', specialCd: 8, desc: 'Climber. E: huge leap forward.' },
-  belcher: { name: 'Belcher', hp: 380, walk: 4.8, sprint: 6.6,  radius: 0.75, height: 1.8,
-             special: 'spit', specialCd: 6, desc: 'Ranged. E: arcing acid spit.' },
-  brute:   { name: 'Brute',   hp: 600, walk: 5.2, sprint: 7.6,  radius: 0.85, height: 2.2,
-             special: 'charge', specialCd: 10, desc: 'Heavy. E: knockback charge.' },
+  walker:  { name: 'Walker',  hp: 200, walk: 5.2, sprint: 7.6,  radius: 0.55, height: 1.8, cost: 0,
+             special: 'none', specialCd: 0, desc: 'The baseline shambler every zombie starts as. Cheap, no special — advance and kill Heroes to earn upgrades.' },
+  runner:  { name: 'Runner',  hp: 320, walk: 6.4, sprint: 9.6,  radius: 0.55, height: 1.8, cost: 500,
+             special: 'adrenaline', specialCd: 12, desc: 'Sprinter. More health & speed. E: Adrenaline speed surge.' },
+  stalker: { name: 'Stalker', hp: 240, walk: 6.9, sprint: 10.8, radius: 0.5,  height: 1.7, cost: 650,
+             special: 'leap', specialCd: 8, desc: 'Climber. Fastest, nimble. E: huge leap forward.' },
+  belcher: { name: 'Belcher', hp: 420, walk: 4.8, sprint: 6.6,  radius: 0.75, height: 1.8, cost: 800,
+             special: 'spit', specialCd: 6, desc: 'Ranged bruiser. E: arcing acid spit that hits Heroes at distance.' },
+  brute:   { name: 'Brute',   hp: 680, walk: 5.4, sprint: 7.8,  radius: 0.85, height: 2.2, cost: 1100,
+             special: 'charge', specialCd: 10, desc: 'Huge tank. E: knockback charge that flattens Heroes.' },
 };
+export const ZCLASS_ORDER = ['walker', 'runner', 'stalker', 'belcher', 'brute'];
+
+// ---- Zombie progression (points) --------------------------------------------
+// Tuned so ~2-3 average advances (die partway down the road) buys a class, but
+// a single Hero kill instantly funds even the priciest upgrade.
+export const ZPOINTS = {
+  perMeter: 1.3,      // points per metre of forward progress toward the door
+  humanKill: 1200,    // instant character upgrade
+  reachDoor: 200,     // reaching the barricade
+  clawBarricade: 4,   // per auto-claw on the safehouse door
+  start: 0,
+};
+
+// ---- Zombie item upgrades (cheap, stack & mix) ------------------------------
+// Bought freely from the upgrade menu; a description is shown before purchase.
+// Layered damage soak order: Energy Barrier -> Shields -> Helmet -> base HP.
+export const ZITEMS = {
+  helmet: { name: 'Helmet',          cost: 120, helmetHp: 70, look: 'helmet',
+            desc: 'Football helmet / traffic pylon. +70 soak that also NULLIFIES headshot bonus damage until it is knocked off.' },
+  shoes:  { name: 'Running Shoes',   cost: 150, sprintMult: 1.22, lungeCdMult: 0.7, look: 'shoes',
+            desc: 'Faster sprint and a much shorter Lunge cooldown. No armour, pure mobility.' },
+  lid:    { name: 'Garbage Can Lid', cost: 180, shieldHp: 90,  look: 'lid',
+            desc: 'A dented steel lid strapped to your arm. +90 shield health.' },
+  riot:   { name: 'Riot Shield',     cost: 280, shieldHp: 180, look: 'riot',
+            desc: 'Looted police riot shield. +180 shield health.' },
+  chain:  { name: 'Chain Armor',     cost: 360, shieldHp: 300, look: 'chain',
+            desc: 'Heavy scavenged chainmail. +300 shield health — the most raw armour you can wear.' },
+  energy: { name: 'Energy Barrier',  cost: 520, energyHp: 140, regenDelay: 8, look: 'energy',
+            desc: 'Martian tech bubble. INVULNERABLE to traps while up; only Hero weapons deplete it. Fully regenerates after 8s without taking Hero damage.' },
+};
+export const ZITEM_ORDER = ['helmet', 'shoes', 'lid', 'riot', 'chain', 'energy'];
+
 export const ZOMBIE_TRAP_RESIST = 0.4;   // player zombies take 40% of trap damage
 export const LUNGE_CD = 5;               // Q cooldown seconds
 export const LUNGE_SPEED = 16; export const LUNGE_TIME = 0.45;
@@ -91,6 +126,7 @@ export const GRAPPLE_DPS_TICK = 10;      // dmg per grapple tick
 export const GRAPPLE_TICK = 0.4;         // seconds per tick
 export const GRAPPLE_MASH_NEED = 8;      // space taps to escape
 export const CLAW_BARRICADE_DMG = 8;     // player claw vs barricade per swing
+export const RESPAWN_INVULN = 3;         // seconds of spawn protection (heroes)
 
 // ---- AI horde ---------------------------------------------------------------
 export const AI_KINDS = {
@@ -119,13 +155,28 @@ export const TRAPS = {
 };
 export const TRAP_ORDER = ['mine', 'beartrap', 'spikes', 'flame', 'turret', 'boombox'];
 
+// Trap tier upgrades (tier 1 = as-placed). Multipliers applied to hp & damage,
+// plus the coin cost to step up. Max tier 3.
+export const TRAP_TIERS = [
+  { hpMult: 1.0, dmgMult: 1.0, cost: 0 },
+  { hpMult: 1.8, dmgMult: 1.5, cost: 120 },
+  { hpMult: 3.0, dmgMult: 2.2, cost: 250 },
+];
+
 // ---- Builds -----------------------------------------------------------------
+// hp is tier-1; walls/floors/ramps upgrade through 3 material tiers.
 export const BUILDS = {
   wall: { label: 'WOOD WALL',  cost: 30, hp: 250 },
   floor:{ label: 'FLOOR/CEILING', cost: 30, hp: 200 },
   ramp: { label: 'WOOD RAMP',  cost: 30, hp: 200 },
 };
 export const BUILD_ORDER = ['wall', 'floor', 'ramp'];
+// Tier 1 wood -> Tier 2 stone -> Tier 3 steel.
+export const BUILD_TIERS = [
+  { name: 'WOOD',  hpMult: 1.0, cost: 0,  color: 0x6a4a26 },
+  { name: 'STONE', hpMult: 2.2, cost: 40, color: 0x6b7079 },
+  { name: 'STEEL', hpMult: 4.0, cost: 80, color: 0x8b95a6 },
+];
 
 // ---- Statuses ----------------------------------------------------------------
 export const BURN = { dps: 8, dur: 4, cap: 60 };    // fire tick to a maximum (doc)
