@@ -1,6 +1,7 @@
 // HUD, menus, chat, scoreboard, overlays.
 import { TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER, WEAPONS, HEROES, ZCLASSES,
-         ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BARRICADE_MAX_HP, PHASE } from './shared.js';
+         ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BARRICADE_MAX_HP, PHASE,
+         ROOM_MAX, MAX_RESISTANCE } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -62,6 +63,9 @@ export class HUD {
       zpts: $('zpts'), zptsNum: $('zptsNum'), zptsHint: $('zptsHint'),
       arEnergy: $('arEnergy'), arShield: $('arShield'), arHelmet: $('arHelmet'),
       upgrade: $('upgrade'), upPts: $('upPts'), upClassGrid: $('upClassGrid'), upItemGrid: $('upItemGrid'),
+      splash: $('splash'),
+      lobby: $('lobby'), lobbyGrid: $('lobbyGrid'), lobbyCount: $('lobbyCount'), lobbySub: $('lobbySub'),
+      startBtn: $('startBtn'), fillBtn: $('fillBtn'), leaveBtn: $('leaveBtn'),
     };
     this._centerT = null;
     this._hitT = null;
@@ -294,13 +298,78 @@ export class HUD {
       });
     }
   }
+
+  // ---- pre-game lobby -------------------------------------------------------
+  showLobby(mode, roster, myId) {
+    this.el.lobbySub.textContent = mode === 'solo'
+      ? 'Solo demo · bots have filled the lobby'
+      : 'Multiplayer · slots fill live as players join';
+    this.el.fillBtn.style.display = mode === 'solo' ? 'none' : '';
+    this.el.startBtn.textContent = 'ENTER GAME ▶';
+    this.updateLobby(roster, myId);
+    this.show('lobby');
+  }
+
+  updateLobby(roster, myId) {
+    const grid = this.el.lobbyGrid;
+    grid.innerHTML = '';
+    const res = roster.filter(r => r.team === 'resistance');
+    const zom = roster.filter(r => r.team === 'zombie');
+    const zSlots = ROOM_MAX - MAX_RESISTANCE;
+    const mkSlot = (r, team) => {
+      const d = document.createElement('div');
+      const teamCls = team === 'resistance' ? 'res' : 'zom';
+      if (!r) {
+        d.className = `lslot empty ${teamCls}`;
+        d.innerHTML = `<div class="who">— open —</div><div class="role">${team === 'resistance' ? 'RESISTANCE' : 'ZOMBIE'}</div>`;
+        return d;
+      }
+      const isBot = String(r.id).startsWith('bot');
+      const roleName = team === 'resistance'
+        ? (HEROES[r.cls] ? HEROES[r.cls].name : 'Hero')
+        : (ZCLASSES[r.cls] ? ZCLASSES[r.cls].name : 'Walker');
+      d.className = `lslot ${teamCls}` + (r.id === myId ? ' me' : '');
+      const bits = [roleName.toUpperCase()];
+      if (isBot) bits.push('BOT');
+      if (r.ready) bits.push('✔ READY');
+      d.innerHTML = `<div class="who"></div><div class="role"></div>`;
+      d.querySelector('.who').textContent = r.nick + (r.id === myId ? ' (you)' : '');
+      d.querySelector('.role').innerHTML = bits.join(' · ').replace('BOT', '<span class="bot">BOT</span>');
+      return d;
+    };
+    for (let i = 0; i < MAX_RESISTANCE; i++) grid.appendChild(mkSlot(res[i], 'resistance'));
+    for (let i = 0; i < zSlots; i++) grid.appendChild(mkSlot(zom[i], 'zombie'));
+    this.el.lobbyCount.textContent =
+      `${roster.length} / ${ROOM_MAX} in lobby  ·  ${res.length} resistance  ·  ${zom.length} zombies`;
+  }
 }
 
-// ---- main menu builder ---------------------------------------------------------
-export function buildMenu(onPlay) {
-  const modeRow = $('modeRow'), teamRow = $('teamRow'), clsRow = $('clsRow'), secRow = $('secRow');
-  const clsLabel = $('clsLabel'), secLabel = $('secLabel');
-  const state = { mode: 'solo', team: 'resistance', hero: 'tommy', zclass: 'runner', secondary: 'pistol' };
+// ---- splash / title screen -----------------------------------------------------
+// Home page: just the title + a nickname, then PLAY SOLO or MULTIPLAYER.
+export function buildSplash(onChoose) {
+  const nickEl = $('splashNick'), err = $('splashError');
+  const saved = localStorage.getItem('zfm_nick');
+  if (saved) nickEl.value = saved;
+  const go = (mode) => {
+    const nick = nickEl.value.trim();
+    if (nick.length < 2) { err.textContent = 'Enter a nickname (2+ characters)'; nickEl.focus(); return; }
+    err.textContent = '';
+    localStorage.setItem('zfm_nick', nick);
+    onChoose(mode, nick);
+  };
+  $('btnSolo').onclick = () => go('solo');
+  $('btnMulti').onclick = () => go('multi');
+  nickEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') go('solo'); e.stopPropagation(); });
+  setTimeout(() => nickEl.focus(), 60);
+}
+
+// ---- loadout menu --------------------------------------------------------------
+// Mode + nickname arrive from the splash; here you only pick side, hero & weapon.
+// Returns a controller so main.js can re-open it with a chosen mode.
+export function buildMenu(onPlay, onBack) {
+  const teamRow = $('teamRow'), clsRow = $('clsRow'), secRow = $('secRow');
+  const clsLabel = $('clsLabel'), secLabel = $('secLabel'), modeSub = $('menuMode');
+  const state = { mode: 'solo', nick: 'Player', team: 'resistance', hero: 'tommy', secondary: 'pistol' };
 
   function mkPick(row, key, label, sub, sel, fn) {
     const d = document.createElement('div');
@@ -320,9 +389,10 @@ export function buildMenu(onPlay) {
   }
 
   function render() {
-    modeRow.innerHTML = ''; teamRow.innerHTML = ''; clsRow.innerHTML = ''; secRow.innerHTML = '';
-    mkPick(modeRow, 'solo', 'SOLO DEMO', 'offline · lobby of AI bots', state.mode === 'solo', k => state.mode = k);
-    mkPick(modeRow, 'multi', 'MULTIPLAYER', 'online · public room', state.mode === 'multi', k => state.mode = k);
+    teamRow.innerHTML = ''; clsRow.innerHTML = ''; secRow.innerHTML = '';
+    modeSub.textContent = state.mode === 'solo'
+      ? 'SOLO DEMO · offline vs AI · pick your side'
+      : 'MULTIPLAYER · online lobby · pick your side';
     mkPick(teamRow, 'auto', 'AUTO', 'fill a slot', state.team === 'auto', k => state.team = k);
     mkPick(teamRow, 'resistance', 'RESISTANCE', 'max 4 heroes', state.team === 'resistance', k => state.team = k);
     mkPick(teamRow, 'zombie', 'ZOMBIES', 'evolve from a Walker', state.team === 'zombie', k => state.team = k);
@@ -348,13 +418,21 @@ export function buildMenu(onPlay) {
       showPreview(HEROES[state.hero].main);
     }
   }
-  render();
 
   $('playBtn').onclick = () => {
-    const nick = $('nickname').value.trim();
-    if (nick.length < 2) { $('menuError').textContent = 'Nickname must be at least 2 characters'; return; }
-    $('menuError').textContent = '';
-    onPlay({ nick, team: state.team, cls: state.team === 'zombie' ? 'walker' : state.hero, secondary: state.secondary, solo: state.mode === 'solo' });
+    onPlay({
+      nick: state.nick,
+      team: state.team,
+      cls: state.team === 'zombie' ? 'walker' : state.hero,
+      secondary: state.secondary,
+      solo: state.mode === 'solo',
+    });
   };
-  $('nickname').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('playBtn').click(); e.stopPropagation(); });
+  const backBtn = $('menuBack');
+  if (backBtn) backBtn.onclick = () => { if (onBack) onBack(); };
+
+  render();
+  return {
+    open(mode, nick) { state.mode = mode; if (nick) state.nick = nick; render(); },
+  };
 }

@@ -9,6 +9,7 @@ import {
   CLAW_BARRICADE_DMG, AI_KINDS, WAVES, ZLIVES_BASE, ZLIVES_PER_PLAYER,
   TRAPS, BUILDS, BURN, BLEED, RESPAWN_HERO, RESPAWN_ZOMBIE, clamp, dist2,
   ZPOINTS, ZITEMS, ZCLASS_ORDER, RESPAWN_INVULN, TRAP_TIERS, BUILD_TIERS,
+  FIRE_ESCAPES, FIRE_ESCAPE_TOP,
 } from './shared.js';
 
 let nextEntity = 1;
@@ -388,8 +389,9 @@ class Room {
     p.grapple = null;
     p.invulnUntil = now() + RESPAWN_INVULN;                  // brief spawn protection
     if (p.team === 'resistance') {
-      // heroes respawn up on the fire-escape balcony beside the safehouse door
-      p.x = rand(-7, 7); p.y = 0; p.z = MAP.doorZ - rand(5, 9); p.yaw = 0; // face down the road
+      // heroes respawn up on a fire-escape balcony beside the safehouse door
+      const fe = FIRE_ESCAPES[(Math.random() * FIRE_ESCAPES.length) | 0];
+      p.x = fe.x + rand(-1.4, 1.4); p.y = FIRE_ESCAPE_TOP; p.z = fe.z + 1.2; p.yaw = 0; // face down the road
     } else {
       p.x = rand(-8, 8); p.y = 0; p.z = MAP.spawnZ + rand(0, 8); p.yaw = Math.PI; // face the safehouse
       refillArmor(p);
@@ -467,7 +469,25 @@ class Room {
       case 'buyItem': this.onBuyItem(p, m); break;
       case 'upBuild': this.onUpgradeBuild(p, m); break;
       case 'upTrap': this.onUpgradeTrap(p, m); break;
+      case 'fillAI': this.onFillAI(p); break;
     }
+  }
+
+  // Lobby: any player may fill remaining slots with bots and start the match.
+  onFillAI(p) {
+    if (this.phase !== PHASE.PREP && this.phase !== PHASE.INTERMISSION) return;
+    const heroKeys = Object.keys(HEROES);
+    let guard = 0;
+    while (this.countTeam('resistance') < MAX_RESISTANCE && this.players.size < ROOM_MAX && guard++ < 40) {
+      this.addBot('resistance', heroKeys[this.countTeam('resistance') % heroKeys.length], pickRand(BOT_HERO_NAMES));
+    }
+    guard = 0;
+    while (this.players.size < ROOM_MAX && guard++ < 40) {
+      this.addBot('zombie', 'walker', pickRand(BOT_ZOMBIE_NAMES));
+    }
+    for (const q of this.players.values()) q.ready = true;   // start on next tick
+    this.broadcast({ t: 'ev', k: 'roster', roster: this.rosterList() });
+    this.broadcast({ t: 'ev', k: 'chat', id: 0, nick: 'SYSTEM', team: 'resistance', text: `${p.nick} filled the lobby with bots — starting!` });
   }
 
   // ---- zombie progression ---------------------------------------------------

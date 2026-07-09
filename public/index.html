@@ -162,6 +162,39 @@
   #wpnPreview { width: 220px; height: 96px; background: #0a0f1a; border: 1px solid #22314a; border-radius: 8px; }
   #wpnPreviewName { font-size: 11px; color: #7df9ff; letter-spacing: .2em; margin-top: 3px; }
 
+  /* ---------- splash + lobby ---------- */
+  #splash { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+            background: radial-gradient(ellipse at 50% 32%, #14243b 0%, #05070c 72%); z-index: 32; }
+  #splashButtons { display: flex; gap: 18px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
+  .bigbtn { padding: 20px 48px; font-size: 22px; font-weight: 900; letter-spacing: .12em; border: 0; border-radius: 12px;
+            cursor: pointer; min-width: 240px; color: #05070c; }
+  .bigbtn small { display: block; font-size: 11px; font-weight: 600; letter-spacing: .1em; margin-top: 4px; color: #05263a; }
+  #btnSolo { background: linear-gradient(180deg, #9fe870, #57b83d); box-shadow: 0 0 26px #4c4; }
+  #btnMulti { background: linear-gradient(180deg, #7df9ff, #22a7d8); box-shadow: 0 0 26px #2ad; }
+  .bigbtn:hover { filter: brightness(1.12); }
+
+  #lobby { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px;
+           background: #05070cee; z-index: 28; overflow-y: auto; padding: 3vh 12px 40px; }
+  #lobbyTitle { font-size: 30px; font-weight: 900; letter-spacing: .18em; color: #7df9ff; text-shadow: 0 0 22px #0af; margin-top: 6px; }
+  #lobbySub { font-size: 12px; letter-spacing: .25em; color: #9fe870; text-transform: uppercase; }
+  #lobbyGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: min(880px, 94vw); margin-top: 6px; }
+  .lslot { border: 1px solid #22314a; border-radius: 8px; padding: 8px 10px; background: #0b1220; min-height: 54px;
+           display: flex; flex-direction: column; justify-content: center; }
+  .lslot.res { border-color: #245a72; } .lslot.zom { border-color: #4a2f6b; }
+  .lslot.empty { opacity: .4; border-style: dashed; }
+  .lslot.me { box-shadow: 0 0 12px #9fe87066; border-color: #9fe870; }
+  .lslot .who { font-weight: 800; font-size: 13px; color: #e9f2ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lslot .role { font-size: 10px; letter-spacing: .12em; margin-top: 2px; }
+  .lslot.res .role { color: #7df9ff; } .lslot.zom .role { color: #b76fff; }
+  .lslot .bot { color: #7d8aa0; }
+  #lobbyCount { font-size: 12px; color: #9db2cc; }
+  #lobbyBtns { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; justify-content: center; }
+  #lobbyBtns button { padding: 12px 26px; font-size: 15px; font-weight: 800; letter-spacing: .1em; border: 0; border-radius: 9px; cursor: pointer; }
+  #startBtn { background: linear-gradient(180deg,#9fe870,#57b83d); color: #05070c; box-shadow: 0 0 18px #4c4; }
+  #fillBtn { background: #0a84ff; color: #fff; }
+  #leaveBtn { background: #24303f; color: #cfd8e3; }
+  #lobbyHint { font-size: 12px; color: #58708f; max-width: 620px; text-align: center; }
+
   /* ---------- scoreboard ---------- */
   #scoreboard { z-index: 20; display: flex; align-items: center; justify-content: center; background: #05070cb0; }
   #scoreboard table { border-collapse: collapse; min-width: min(640px, 92vw); background: #0b1220ee; border: 1px solid #2a3a52; }
@@ -207,15 +240,32 @@
 
 <div id="dmgvig"></div>
 
-<!-- MAIN MENU -->
-<div id="menu" class="overlay">
+<!-- SPLASH / TITLE -->
+<div id="splash" class="overlay">
   <div id="logo">ZOMBIES FROM MARS</div>
   <div id="subtitle">Multiplayer Tower Defense - Resistance Vs. Zombies</div>
   <div id="gamename">FROM THE RED PLANET, THEY COME</div>
-  <input id="nickname" maxlength="16" placeholder="Enter your nickname" autocomplete="off">
+  <input id="splashNick" maxlength="16" placeholder="Enter your nickname" autocomplete="off"
+         style="margin-top:20px;padding:12px 18px;width:min(340px,80vw);font-size:18px;text-align:center;background:#0b1220;border:1px solid #274;border-radius:8px;color:#e9f2ff;outline:none;">
+  <div id="splashError" style="color:#ff5f4f;font-size:13px;height:16px;"></div>
+  <div id="splashButtons">
+    <button class="bigbtn" id="btnSolo">PLAY SOLO<small>OFFLINE · vs AI bots</small></button>
+    <button class="bigbtn" id="btnMulti">MULTIPLAYER<small>ONLINE · public lobby</small></button>
+  </div>
+  <div id="menuHint" style="margin-top:20px;">
+    WASD move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; Mouse look &nbsp;·&nbsp; LMB fire / claw &nbsp;·&nbsp; RMB aim<br>
+    Heroes: E traps · Q build (R rotate) · G upgrade tier · R reload · F fire escape · 1/2/3 weapons<br>
+    Zombies: Q lunge · E special · B evolve &amp; buy gear · F ready · TAB scoreboard · T chat · V voice · ESC pause
+  </div>
+  <div id="version">ZOMBIES FROM MARS &nbsp;v1.1.0 &nbsp;·&nbsp; SOLO DEMO + MULTIPLAYER</div>
+</div>
+
+<!-- LOADOUT MENU -->
+<div id="menu" class="overlay hidden">
+  <div class="menuLogo" style="font-size:clamp(28px,5vw,56px);font-weight:900;letter-spacing:.08em;color:#7df9ff;text-shadow:0 0 12px #21c9ff,0 0 44px #0a84ff;">CHOOSE YOUR LOADOUT</div>
+  <div id="menuMode" style="font-size:clamp(13px,2vw,18px);letter-spacing:.3em;color:#9fe870;text-transform:uppercase;">Pick your side, then join the lobby</div>
+  <input id="nickname" type="hidden">
   <div id="menuError"></div>
-  <div class="picklabel">Mode</div>
-  <div class="pickrow" id="modeRow"></div>
   <div class="picklabel">Team</div>
   <div class="pickrow" id="teamRow"></div>
   <div class="picklabel" id="clsLabel">Hero</div>
@@ -226,13 +276,22 @@
     <canvas id="wpnPreview" width="440" height="192"></canvas>
     <div id="wpnPreviewName"></div>
   </div>
-  <button id="playBtn">PLAY</button>
-  <div id="menuHint">
-    WASD move &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; Mouse look &nbsp;·&nbsp; LMB fire / claw &nbsp;·&nbsp; RMB aim<br>
-    Heroes: E traps menu + scroll &nbsp;·&nbsp; Q build menu + scroll &nbsp;·&nbsp; R reload &nbsp;·&nbsp; 1/2/3 weapons<br>
-    Zombies: Q lunge &nbsp;·&nbsp; E special &nbsp;·&nbsp; F ready up &nbsp;·&nbsp; TAB scoreboard &nbsp;·&nbsp; T chat &nbsp;·&nbsp; V voice &nbsp;·&nbsp; ESC pause
+  <button id="playBtn">JOIN LOBBY</button>
+  <button id="menuBack" style="margin-top:8px;padding:8px 22px;background:#24303f;color:#cfd8e3;border:0;border-radius:8px;cursor:pointer;font-size:13px;">◄ BACK</button>
+</div>
+
+<!-- PRE-GAME LOBBY -->
+<div id="lobby" class="overlay hidden">
+  <div id="lobbyTitle">LOBBY</div>
+  <div id="lobbySub">Waiting to start · 16 slots</div>
+  <div id="lobbyCount"></div>
+  <div id="lobbyGrid"></div>
+  <div id="lobbyBtns">
+    <button id="startBtn">READY / START</button>
+    <button id="fillBtn">FILL WITH BOTS &amp; START</button>
+    <button id="leaveBtn">LEAVE</button>
   </div>
-  <div id="version">ZOMBIES FROM MARS &nbsp;v1.0.0 &nbsp;·&nbsp; SOLO DEMO + MULTIPLAYER</div>
+  <div id="lobbyHint">Slots fill live as players and bots join. Any player can fill the rest with bots and start. You spawn straight into the 5-minute build phase.</div>
 </div>
 
 <!-- HUD -->

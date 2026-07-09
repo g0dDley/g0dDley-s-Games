@@ -185,5 +185,13 @@ export const BLEED = { dps: 5, dur: 5, cap: 40 };
 export const RESPAWN_HERO = 5.0;
 export const RESPAWN_ZOMBIE = 4.0;
 
+// Fire-escape balconies beside the safehouse door — Heroes respawn up here
+// (one storey up) with brief invulnerability, and can climb the ladders (F).
+export const FIRE_ESCAPE_TOP = 3.4;
+export const FIRE_ESCAPES = [
+  { x: -12.5, z: MAP.doorZ - 11 },
+  { x: 12.5, z: MAP.doorZ - 11 },
+];
+
 export function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 export function dist2(ax, az, bx, bz) { const dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; }

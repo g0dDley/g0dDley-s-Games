@@ -276,7 +276,9 @@ export class Game {
     this.me.cls = welcome.cls;
     this.me.pos.set(welcome.pos[0], welcome.pos[1], welcome.pos[2]);
     this.phase = welcome.ph; this.phaseTimeLeft = welcome.tl; this.round = welcome.rd;
-    this.roster = welcome.roster || [];
+    // Prefer the live roster synced while sitting in the lobby (welcome only lists us,
+    // since bots/other players are broadcast right after the welcome is sent).
+    if (!this.roster || this.roster.length < (welcome.roster || []).length) this.roster = welcome.roster || [];
 
     if (this.me.team === 'resistance') {
       const h = HEROES[this.me.cls];
@@ -312,6 +314,8 @@ export class Game {
     if (isZom) { this.hud.setPoints(this.me.points, false); this.hud.setArmor({ energy: 0, energyMax: 0, shield: 0, shieldMax: 0, helmet: 0, helmetMax: 0 }); }
 
     this.hud.hide('menu');
+    this.hud.hide('splash');
+    this.hud.hide('lobby');
     this.hud.show('hud');
     this.hud.setPhase(this.phase, this.round);
     this.updatePhaseUI();
@@ -674,7 +678,11 @@ export class Game {
         if (rp) { this.scene.remove(rp.mesh); this.players.delete(m.id); }
         break;
       }
-      case 'roster': this.roster = m.roster; if (!this.hud.el.scoreboard.classList.contains('hidden')) this.hud.renderScoreboard(this.roster, this.me.id); break;
+      case 'roster':
+        this.roster = m.roster;
+        if (!this.hud.el.scoreboard.classList.contains('hidden')) this.hud.renderScoreboard(this.roster, this.me.id);
+        if (this.hud.el.lobby && !this.hud.el.lobby.classList.contains('hidden')) this.hud.updateLobby(this.roster, this.me.id);
+        break;
       case 'chat': this.hud.chatMsg(m.nick, m.text, m.team); break;
       case 'phase': {
         this.phase = m.ph; this.phaseTimeLeft = m.tl; this.round = m.rd;
@@ -996,6 +1004,12 @@ export class Game {
         const f = clamp((along + 2.5) / 5, 0, 1);
         const top = b.y + f * 3;
         if (top > h && top <= this.me.pos.y + 1.3) h = top;
+      }
+    }
+    // fire-escape balconies (walk-on platforms)
+    for (const pf of (this.world.platforms || [])) {
+      if (x >= pf.minX && x <= pf.maxX && z >= pf.minZ && z <= pf.maxZ) {
+        if (pf.y > h && pf.y <= this.me.pos.y + 1.3) h = pf.y;
       }
     }
     // sidewalks
