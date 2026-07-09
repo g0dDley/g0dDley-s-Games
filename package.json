@@ -12,6 +12,8 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@yao-pkg/pkg": "^6.21.0",
+    "esbuild": "^0.28.1",
     "three": "^0.185.0"
   }
 }

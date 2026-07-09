@@ -3,3 +3,7 @@ nohup.out
 *.log
 
 !supabase/bundle.json
+
+# standalone-executable build artifacts (regenerate with scripts/build-exe.js)
+dist-pkg/
+dist/
