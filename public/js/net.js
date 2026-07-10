@@ -82,4 +82,19 @@ export class Net {
     if (this.mode === 'local') { if (this.localClient) this.localClient.onClose(); }
     else if (this.ws) this.ws.close();
   }
+
+  // One-shot lobby query over a throwaway socket (multiplayer browser).
+  fetchLobbies(cb) {
+    let done = false;
+    const finish = (list) => { if (done) return; done = true; try { ws.close(); } catch (_) {} cb(list || []); };
+    let ws;
+    try { ws = new WebSocket(this.url()); } catch (_) { cb([]); return; }
+    const to = setTimeout(() => finish([]), 3500);
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'lobbies' }));
+    ws.onmessage = (ev) => {
+      let m; try { m = JSON.parse(ev.data); } catch (_) { return; }
+      if (m && m.t === 'lobbies') { clearTimeout(to); finish(m.list); }
+    };
+    ws.onerror = () => { clearTimeout(to); finish([]); };
+  }
 }

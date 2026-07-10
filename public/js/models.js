@@ -86,14 +86,19 @@ export function makeCharacter(team, cls) {
 }
 
 export function makeAIZombie(kind) {
-  const map = { walker: 'walker', runner: 'airunner', brute: 'aibrute', exploder: 'exploder' };
+  const map = { walker: 'walker', runner: 'airunner', brute: 'aibrute', exploder: 'exploder', stalker: 'stalker', belcher: 'belcher' };
   const c = Z_COLORS[map[kind]] || Z_COLORS.walker;
-  const scale = kind === 'brute' ? 1.35 : (kind === 'runner' ? 0.95 : 1);
-  const m = makeHumanoid(c, { scale, zombie: true, brute: kind === 'brute' });
+  const scale = kind === 'brute' ? 1.35 : (kind === 'belcher' ? 1.12 : (kind === 'runner' || kind === 'stalker' ? 0.95 : 1));
+  const m = makeHumanoid(c, { scale, zombie: true, brute: kind === 'brute' || kind === 'belcher' });
   if (kind === 'exploder') {
     const tank = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8), new THREE.MeshLambertMaterial({ color: 0xcc4411, emissive: 0x551100 }));
     tank.position.set(0, 1.1, -0.28);
     m.add(tank);
+  }
+  if (kind === 'belcher') {
+    const sac = new THREE.Mesh(new THREE.SphereGeometry(0.36, 8, 8), new THREE.MeshLambertMaterial({ color: 0x6cae3a, emissive: 0x223a0f }));
+    sac.position.set(0, 1.05, 0.24);
+    m.add(sac);
   }
   return m;
 }

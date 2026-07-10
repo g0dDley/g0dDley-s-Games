@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import {
   MAP, PHASE, HEROES, ZCLASSES, WEAPONS, SECONDARIES, TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER,
   LUNGE_CD, LUNGE_TIME, INPUT_RATE, clamp,
-  ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BUILD_TIERS,
+  ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BUILD_TIERS, CLIMB_SPEED, BEACON_COST,
+  DRAFT_BASE, DRAFT_PER_MIN, DRAFT_FREE_ITEMS, HORDE_CLASSES, PREP_TIME,
 } from './shared.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, makeAIZombie, makeTrap, makeBuild, makeGunMesh } from './models.js';
@@ -93,7 +94,7 @@ export class Game {
       id: null, team: null, cls: null, secondary: null,
       pos: new THREE.Vector3(0, 0, 0), vel: new THREE.Vector3(),
       yaw: 0, pitch: 0, onGround: true, alive: true, hp: 100, maxHp: 100,
-      coins: 0, score: 0, grappledBy: null, mashHint: 0,
+      coins: 0, score: 0, grappledBy: null, grappling: null, mashHint: 0,
       lungeT: -99, specialT: -99, lungeVec: null, danceUntil: 0, heldUntil: 0,
       speedBoostUntil: 0, chargeUntil: 0, invulnUntil: 0,
       points: 0, items: {}, sprintMult: 1,
@@ -106,6 +107,9 @@ export class Game {
     this.paused = false;
     this.chatOpen = false;
     this.phase = PHASE.PREP; this.phaseTimeLeft = 300; this.round = 0;
+    this.wave = 1; this._lifePool = 0; this._aiLeft = 0;
+    this.breach = null;        // active barricade mini-game state
+    this.draftOpen = false;    // zombie pre-game draft panel open
 
     // weapons
     this.slots = [];           // [mainKey, secondaryKey, meleeKey] for heroes / ['claw']
@@ -168,7 +172,7 @@ export class Game {
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.renderer.domElement;
-      if (!this.pointerLocked && this.running && !this.chatOpen && !this.paused && !this.upgradeOpen && this.me.alive) {
+      if (!this.pointerLocked && this.running && !this.chatOpen && !this.paused && !this.upgradeOpen && !this.draftVisible() && this.me.alive) {
         this.setPaused(true);
       }
     });
@@ -202,7 +206,9 @@ export class Game {
       return;
     }
     switch (e.code) {
-      case 'Escape': this.setPaused(!this.paused); break;
+      case 'Escape':
+        if (this.draftOpen) { this.closeDraft(); break; }
+        this.setPaused(!this.paused); break;
       case 'Tab': e.preventDefault(); this.hud.show('scoreboard'); this.hud.renderScoreboard(this.roster, this.me.id); break;
       case 'KeyT': e.preventDefault(); this.openChat(); break;
       case 'KeyV': if (!e.repeat) this.voice.start(); break;
@@ -214,7 +220,11 @@ export class Game {
         if (this.me.team === 'resistance') this.tryTierUpgrade();
         break;
       case 'KeyB':
-        if (this.me.team === 'zombie') this.openUpgrade();
+        if (this.me.team === 'zombie') {
+          if (this.phase === PHASE.PREP || this.phase === PHASE.INTERMISSION) {
+            this.draftOpen ? this.closeDraft() : this.openDraft();
+          } else this.openUpgrade();
+        }
         break;
       case 'Digit1': this.setSlot(0); break;
       case 'Digit2': this.setSlot(1); break;
@@ -228,10 +238,15 @@ export class Game {
         else this.useLunge();
         break;
       case 'KeyF':
-        if ((this.phase === PHASE.PREP || this.phase === PHASE.INTERMISSION) && this.running) {
-          document.getElementById('readyBtn').click();
-        } else if (this.me.team === 'resistance') {
-          this.tryLadder();
+        if (this.me.team === 'resistance') {
+          // Only Heroes can ready-up / start the match early.
+          if ((this.phase === PHASE.PREP || this.phase === PHASE.INTERMISSION) && this.running) {
+            document.getElementById('readyBtn').click();
+          } else {
+            this.tryLadder();
+          }
+        } else if (this.phase === PHASE.COMBAT) {
+          this.barricadeStrike();   // breach mini-game strike
         }
         break;
       case 'Space':
@@ -316,13 +331,14 @@ export class Game {
     this.hud.hide('menu');
     this.hud.hide('splash');
     this.hud.hide('lobby');
+    this.hud.hide('browser');
     this.hud.show('hud');
     this.hud.setPhase(this.phase, this.round);
     this.updatePhaseUI();
     this.hud.setCoins(this.me.team === 'resistance' ? this.me.coins : null);
     this.hud.setHp(this.me.hp, this.me.maxHp);
     this.refreshWeaponHud();
-    this.lockPointer();
+    if (!this.draftOpen) this.lockPointer();   // zombie draft keeps the cursor free
     this.clock.start();
     this.loop();
   }
@@ -442,6 +458,68 @@ export class Game {
       }
     }
     this.hud.centerMsg('NO LADDER HERE', 700);
+  }
+
+  // ---- barricade breach mini-game (zombies) --------------------------------
+  atBarricade() {
+    return this.me.pos.z > MAP.doorZ - 3.2 && Math.abs(this.me.pos.x) < 8 && this.me.pos.y < 1.2;
+  }
+
+  tickBreach() {
+    const on = this.me.team === 'zombie' && this.me.alive && this.phase === PHASE.COMBAT && this.atBarricade();
+    if (!on) { if (this.breach) this.hideBreach(); return; }
+    if (!this.breach) {
+      this.breach = { cursor: 0, dir: 1, speed: 1.1, zoneCenter: 0.5, zoneHalf: 0.16, hits: 0, last: performance.now() };
+      this.hud.showBreach();
+    }
+    const b = this.breach;
+    const now = performance.now();
+    const d = Math.min(0.05, (now - b.last) / 1000); b.last = now;
+    b.cursor += b.dir * b.speed * d;
+    if (b.cursor > 1) { b.cursor = 1; b.dir = -1; }
+    if (b.cursor < 0) { b.cursor = 0; b.dir = 1; }
+    this.hud.updateBreach(b.cursor, b.zoneCenter, b.zoneHalf);
+  }
+
+  barricadeStrike() {
+    if (this.me.team !== 'zombie' || !this.me.alive || this.phase !== PHASE.COMBAT) return;
+    if (!this.atBarricade()) { this.hud.centerMsg('GET TO THE BARRICADE TO BREACH', 900); return; }
+    const b = this.breach;
+    if (!b) return;
+    const good = Math.abs(b.cursor - b.zoneCenter) <= b.zoneHalf;
+    this.net.send({ t: 'barStrike', good });
+    if (good) {
+      b.hits++;
+      b.zoneHalf = Math.max(0.06, b.zoneHalf * 0.86);   // escalate: harder + faster
+      b.speed = Math.min(2.7, b.speed * 1.08);
+      b.zoneCenter = 0.18 + Math.random() * 0.64;
+      this.hud.breachFeedback(true, b.hits);
+      this.sfx.play('boom');
+    } else {
+      b.zoneHalf = Math.min(0.2, b.zoneHalf * 1.14);
+      this.hud.breachFeedback(false, b.hits);
+    }
+  }
+
+  hideBreach() { if (this.breach) { this.breach = null; this.hud.hideBreach(); } }
+
+  // ---- extra FX -------------------------------------------------------------
+  spawnBeaconFx(x, z) {
+    // a bright column of light beaming down from the sky (UFO teleport)
+    const col = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.9, 1.4, 40, 12, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x7dff9c, transparent: true, opacity: 0.5, side: THREE.DoubleSide }));
+    col.position.set(x, 20, z);
+    this.scene.add(col);
+    this.effects.push({ obj: col, until: performance.now() + 900, anim: (o, f) => { o.material.opacity = 0.55 * (1 - f); o.scale.x = o.scale.z = 1 - f * 0.4; } });
+  }
+
+  spawnSpitFx(m) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({ color: 0x9dff5a, transparent: true, opacity: 0.9 }));
+    s.position.set(m.x, m.y, m.z);
+    this.scene.add(s);
+    const dx = m.tx - m.x, dy = m.ty - m.y, dz = m.tz - m.z;
+    this.effects.push({ obj: s, until: performance.now() + 420, anim: (o, f) => { o.position.set(m.x + dx * f, m.y + dy * f + Math.sin(f * Math.PI) * 1.2, m.z + dz * f); o.material.opacity = 0.9 * (1 - f * 0.6); } });
   }
 
   refreshWeaponHud() {
@@ -616,7 +694,11 @@ export class Game {
       }
       case 'died': {
         this.me.alive = false;
-        this.hud.showDeath(m.killer, m.killerIsPlayer, m.respawn);
+        this.me.grappling = null; this.me.grappledBy = null;
+        if (m.pts !== undefined) this.me.points = m.pts;
+        this.hud.showDeath(m.killer, m.killerIsPlayer, m.respawn,
+          { beacon: m.beacon, beaconCost: m.beaconCost, pts: m.pts, onBeacon: () => this.net.send({ t: 'beacon' }) });
+        this.hideBreach();
         break;
       }
       case 'zpts': {
@@ -693,19 +775,49 @@ export class Game {
       }
       case 'round': {
         this.phase = PHASE.COMBAT; this.round = m.rd;
+        this.wave = m.wave || 1;
+        if (m.zl !== undefined) this._lifePool = m.zl;
         this.hud.setPhase(this.phase, this.round);
         this.hud.centerMsg(`ROUND ${m.rd} — THEY'RE COMING`, 3000);
+        this.hud.hideDraft();
         this.updatePhaseUI();
         this.sfx.play('growl');
+        break;
+      }
+      case 'wave': {
+        this.wave = m.wave || this.wave;
+        if (m.zl !== undefined) this._lifePool = m.zl;
+        this.hud.setZLives(this._lifePool, this._aiLeft, this.wave);
+        this.hud.centerMsg(`WAVE ${this.wave} INCOMING`, 1600);
         break;
       }
       case 'ready': this.hud.el.readyCount.textContent = `${m.n} / ${m.total} players ready`; break;
       case 'bar': {
         this.hud.setBarricade(m.hp);
         this.world.setBarricadeHp(m.hp);
+        if (m.zl !== undefined) { this._lifePool = m.zl; this.hud.setZLives(m.zl, this._aiLeft, this.wave); }
         break;
       }
-      case 'zlives': this.hud.setZLives(m.zl, this._aiLeft); break;
+      case 'zlives': this._lifePool = m.zl; this.hud.setZLives(m.zl, this._aiLeft, this.wave); break;
+      case 'breach': {
+        // a player zombie is smashing the barricade — alert the Heroes loudly
+        if (m.id !== this.me.id && this.me.team === 'resistance') {
+          this.hud.centerMsg(`⚠ ${m.nick} IS BREACHING THE BARRICADE!`, 1800);
+          this.hud.flashDamage();
+        }
+        this.sfx.play('boom');
+        break;
+      }
+      case 'breachMiss': this.hud.centerMsg('MISSED — TIME THE STRIKE', 700); break;
+      case 'beaconDrop': {
+        this.spawnBeaconFx(m.x, m.z);
+        if (m.id === this.me.id) this.hud.centerMsg('BEAMED IN — FULL HEALTH', 1500);
+        break;
+      }
+      case 'spit': this.spawnSpitFx(m); break;
+      case 'draft': this.hud.updateDraft(m.weights, m.budget, m.free); break;
+      case 'draftGot': this.hud.draftItemGranted(m.item, m.left); break;
+      case 'draftDenied': this.hud.centerMsg('NO FREE PICKS LEFT — WAIT FOR HEROES TO STALL', 1600); break;
       case 'trapAdd': this.addTrapMesh(m.trap); break;
       case 'trapDel': this.delTrapMesh(m.id); break;
       case 'trapHp': break;
@@ -770,7 +882,10 @@ export class Game {
           this.me.grappledBy = m.z; this.me.mashHint = 0;
           this.hud.centerMsg('GRABBED! MASH SPACE TO BREAK FREE!', 2500);
         }
-        if (m.z === this.me.id) this.hud.centerMsg('YOU GOT ONE! HOLD ON!', 1500);
+        if (m.z === this.me.id) {
+          this.me.grappling = m.h;   // I'm the zombie holding on — also locked in place
+          this.hud.centerMsg('YOU GOT ONE! HOLD ON!', 1500);
+        }
         break;
       }
       case 'grappleEnd': {
@@ -778,6 +893,7 @@ export class Game {
           this.me.grappledBy = null;
           if (m.escaped) this.hud.centerMsg('BROKE FREE!', 1200);
         }
+        if (m.z === this.me.id) this.me.grappling = null;
         break;
       }
       case 'knockback': {
@@ -816,14 +932,42 @@ export class Game {
 
   updatePhaseUI() {
     const prepish = this.phase === PHASE.PREP || this.phase === PHASE.INTERMISSION;
-    if (prepish) {
+    const isHero = this.me.team === 'resistance';
+    if (prepish && isHero) {
+      // Only Heroes may ready-up / start the match early.
       this.hud.show('readywrap');
       const b = document.getElementById('readyBtn');
       b.classList.remove('done');
       b.textContent = (this.phase === PHASE.PREP ? 'READY — START EARLY' : 'READY FOR NEXT ROUND') + ' [F]';
       this.hud.el.readyCount.textContent = '';
     } else this.hud.hide('readywrap');
+    // Zombies draft during prep instead of readying up.
+    if (prepish && !isHero) this.openDraft();
+    else this.closeDraft();
+    if (!prepish) this.hideBreach();
   }
+
+  // ---- zombie pre-game draft panel (shop-style: frees the cursor) ----------
+  draftState() {
+    return {
+      weights: this._draftWeights || null,
+      onChange: (w) => { this._draftWeights = w; this.net.send({ t: 'draft', weights: w }); },
+      onFreeItem: (k) => this.net.send({ t: 'draftItem', item: k }),
+    };
+  }
+  openDraft() {
+    if (this.me.team !== 'zombie' || this.draftOpen) return;
+    this.draftOpen = true;
+    this.hud.showDraft(this.draftState());
+    document.exitPointerLock();
+  }
+  closeDraft() {
+    if (!this.draftOpen) { this.hud.hideDraft(); return; }
+    this.draftOpen = false;
+    this.hud.hideDraft();
+    if (this.running && this.me.alive && !this.paused && !this.chatOpen) this.lockPointer();
+  }
+  draftVisible() { return !!this.draftOpen; }
 
   // ---- meshes ----------------------------------------------------------------
   addTrapMesh(tr) {
@@ -892,9 +1036,10 @@ export class Game {
   // ---- snapshots ------------------------------------------------------------------
   onSnapshot(m) {
     this.phase = m.ph; this.phaseTimeLeft = m.tl; this.round = m.rd;
+    if (m.wave !== undefined) this.wave = m.wave;
     this.hud.setBarricade(m.bar);
-    this._aiLeft = m.qn;
-    this.hud.setZLives(m.zl, m.qn);
+    this._aiLeft = m.qn; this._lifePool = m.zl;
+    this.hud.setZLives(m.zl, m.qn, this.wave);
     const seen = new Set();
     for (const row of m.pl) {
       const [id, x, y, z, yaw, pitch, hp, alive, anim, grap] = row;
@@ -977,6 +1122,7 @@ export class Game {
       this.tickHud(t);
       this.tickEffects();
       this.tickGhost();
+      this.tickBreach(dt);
       if (this.mouseDown && this.pointerLocked && !this.menuMode && this.me.team === 'resistance' && this.me.alive) {
         const w = WEAPONS[this.slots[this.slotIdx]];
         if (w && !w.melee && w.rof < 0.2) this.tryFire(); // full-auto
@@ -1017,6 +1163,31 @@ export class Game {
     return h;
   }
 
+  // Nearest low wall directly ahead that a climber can scale — returns its top Y.
+  climbWallAhead(pos, wish, r = 0.5) {
+    const len = Math.hypot(wish.x, wish.z);
+    if (len < 0.01) return null;
+    const ax = pos.x + (wish.x / len) * (r + 0.25);
+    const az = pos.z + (wish.z / len) * (r + 0.25);
+    let top = null;
+    const consider = (s) => {
+      if (s.max[1] - s.min[1] > 6) return;              // buildings / boundaries: not climbable
+      if (ax < s.min[0] - 0.1 || ax > s.max[0] + 0.1) return;
+      if (az < s.min[2] - 0.1 || az > s.max[2] + 0.1) return;
+      if (s.max[1] <= pos.y + 0.1) return;              // already on top
+      if (top === null || s.max[1] > top) top = s.max[1];
+    };
+    for (const s of this.world.solids) consider(s);
+    for (const b of this.buildData.values()) {
+      if (b.kind !== 'wall' && b.kind !== 'ramp') continue;
+      const c = Math.abs(Math.cos(b.rotY)) > 0.5;
+      consider(c
+        ? { min: [b.x - 2, b.y, b.z - 0.35], max: [b.x + 2, b.y + 3, b.z + 0.35] }
+        : { min: [b.x - 0.35, b.y, b.z - 2], max: [b.x + 0.35, b.y + 3, b.z + 2] });
+    }
+    return top;
+  }
+
   collideSolids(pos, r = 0.5) {
     const walls = [...this.world.solids];
     for (const b of this.buildData.values()) {
@@ -1045,12 +1216,18 @@ export class Game {
     const me = this.me;
     if (!me.alive) return;
 
-    // grappled: locked to zombie
+    // grappled hero: locked to the zombie that grabbed us
     if (me.grappledBy) {
       const z = this.players.get(me.grappledBy);
       if (z && z.target) {
         me.pos.x = z.target.x + 0.7; me.pos.z = z.target.z; me.pos.y = z.target.y || 0;
       }
+      if (this.myMesh) this.myMesh.position.copy(me.pos);
+      return;
+    }
+    // grabbing zombie: also frozen in place until death or the hero breaks free
+    if (me.grappling) {
+      if (this.myMesh) this.myMesh.position.copy(me.pos);
       return;
     }
     const held = t < me.heldUntil;
@@ -1085,21 +1262,38 @@ export class Game {
       me.vel.x = wish.x; me.vel.z = wish.z;
     }
 
+    // Stalkers (or anyone with Mountaineering Gear) climb over low walls by
+    // pushing forward into them — regular zombies just get blocked.
+    const climber = me.team === 'zombie' && (me.cls === 'stalker' || (me.items && me.items.climb));
+    let climbing = false;
+    if (climber && this.moving) {
+      const top = this.climbWallAhead(me.pos, wish);
+      if (top !== null && me.pos.y < top + 0.05) {
+        climbing = true;
+        me.pos.y = Math.min(top + 0.06, me.pos.y + CLIMB_SPEED * dt);
+        me.vel.y = 0; me.onGround = false;
+        me.pos.x += wish.x * dt * 0.4; me.pos.z += wish.z * dt * 0.4;   // creep to clear the ledge
+      }
+    }
+
     // gravity & jump
     const groundH = this.groundHeightAt(me.pos.x, me.pos.z);
-    if (me.onGround && (this.keys.Space) && !held && !dancing && !me.grappledBy) {
-      me.vel.y = JUMP_V; me.onGround = false;
+    if (!climbing) {
+      if (me.onGround && (this.keys.Space) && !held && !dancing && !me.grappledBy) {
+        me.vel.y = JUMP_V; me.onGround = false;
+      }
+      me.vel.y -= GRAVITY * dt;
+      me.pos.x += me.vel.x * dt;
+      me.pos.z += me.vel.z * dt;
+      me.pos.y += me.vel.y * dt;
+      if (me.pos.y <= groundH) { me.pos.y = groundH; me.vel.y = 0; me.onGround = true; }
+      else if (me.pos.y > groundH + 0.05) me.onGround = false;
     }
-    me.vel.y -= GRAVITY * dt;
-    me.pos.x += me.vel.x * dt;
-    me.pos.z += me.vel.z * dt;
-    me.pos.y += me.vel.y * dt;
-    if (me.pos.y <= groundH) { me.pos.y = groundH; me.vel.y = 0; me.onGround = true; }
-    else if (me.pos.y > groundH + 0.05) me.onGround = false;
 
-    me.pos.x = clamp(me.pos.x, -MAP.walkHalfW - 12, MAP.walkHalfW + 12);
-    me.pos.z = clamp(me.pos.z, MAP.minZ + 1, MAP.maxZ - 1);
-    this.collideSolids(me.pos);
+    // hard map bounds: inside the side walls, never behind the final barricade
+    me.pos.x = clamp(me.pos.x, -MAP.walkHalfW, MAP.walkHalfW);
+    me.pos.z = clamp(me.pos.z, MAP.minZ + 1, MAP.doorZ - 0.3);
+    if (!climbing) this.collideSolids(me.pos);
 
     // my mesh follows; body faces the direction of travel while moving
     if (this.myMesh) {

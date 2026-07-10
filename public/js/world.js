@@ -1,6 +1,6 @@
 // Zombieville — procedural nighttime downtown road. All textures generated in code.
 import * as THREE from 'three';
-import { MAP, BARRICADE_MAX_HP, FIRE_ESCAPES, FIRE_ESCAPE_TOP } from './shared.js';
+import { MAP, BARRICADE_MAX_HP, BALCONY, HERO_SPAWNS, LADDERS, FIRE_ESCAPE_TOP } from './shared.js';
 
 function canvasTex(w, h, draw, repeatX = 1, repeatY = 1) {
   const c = document.createElement('canvas');
@@ -320,39 +320,57 @@ export function buildWorld(scene) {
   barricade.position.set(0, 0, MAP.doorZ + 0.1);
   scene.add(barricade);
 
-  // ---- fire escapes + ladders beside the safehouse door --------------------
-  // Heroes respawn on these balconies (one storey up) and press F at a ladder
-  // to climb up/down. Positions come from shared.js so the server spawns match.
+  // ---- hard map boundaries (invisible collision) ---------------------------
+  // Nobody can pass behind the final barricade or leave the playable strip.
+  solids.push({ min: [-99, 0, MAP.doorZ - 0.1], max: [99, 30, MAP.maxZ + 8] });   // behind barricade
+  solids.push({ min: [MAP.walkHalfW, 0, MAP.minZ - 8], max: [MAP.walkHalfW + 40, 30, MAP.maxZ + 8] });   // right edge
+  solids.push({ min: [-MAP.walkHalfW - 40, 0, MAP.minZ - 8], max: [-MAP.walkHalfW, 30, MAP.maxZ + 8] }); // left edge
+
+  // ---- one long fire-escape balcony across the safehouse frontage ----------
+  // Heroes respawn at dedicated spots up here (one storey up) and press F at a
+  // ladder on either end to climb. Geometry comes from shared.js so the server
+  // spawns line up exactly. Zombies cannot use the ladders.
   const ladders = [];
   const platforms = [];               // walk-on top surfaces {minX,maxX,minZ,maxZ,y}
   const ladderMat = new THREE.MeshLambertMaterial({ color: 0x2b2f36 });
   const grateMat = new THREE.MeshLambertMaterial({ color: 0x3a4048 });
-  for (const fe of FIRE_ESCAPES) {
-    const lx = fe.x, lz = fe.z, top = FIRE_ESCAPE_TOP, cz = lz + 1.2;
-    // balcony platform (grated floor)
-    const balc = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 3.2), grateMat);
-    balc.position.set(lx, top, cz);
+  {
+    const top = BALCONY.y, cz = BALCONY.z, W = BALCONY.halfW * 2, D = BALCONY.depth;
+    // grated deck spanning the frontage
+    const balc = new THREE.Mesh(new THREE.BoxGeometry(W, 0.2, D), grateMat);
+    balc.position.set(0, top, cz);
     scene.add(balc);
-    platforms.push({ minX: lx - 2.5, maxX: lx + 2.5, minZ: cz - 1.6, maxZ: cz + 1.6, y: top });
-    // support post + railings
-    const post = new THREE.Mesh(new THREE.BoxGeometry(0.2, top, 0.2), ladderMat);
-    post.position.set(lx + (lx > 0 ? 2.3 : -2.3), top / 2, cz + 1.3); scene.add(post);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(5, 0.9, 0.1), ladderMat);
-    rail.position.set(lx, top + 0.5, cz + 1.5); scene.add(rail);
-    const railSide = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, 3.2), ladderMat);
-    railSide.position.set(lx + (lx > 0 ? 2.4 : -2.4), top + 0.5, cz); scene.add(railSide);
-    // ladder rails + rungs down to the street (in front of the balcony)
-    for (const rx of [-0.35, 0.35]) {
-      const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, top, 0.1), ladderMat);
-      r.position.set(lx + rx, top / 2, lz - 0.3); scene.add(r);
+    platforms.push({ minX: -BALCONY.halfW, maxX: BALCONY.halfW, minZ: cz - D / 2, maxZ: cz + D / 2, y: top });
+    // back railing (against the building) + end railings + support posts
+    const backRail = new THREE.Mesh(new THREE.BoxGeometry(W, 0.9, 0.1), ladderMat);
+    backRail.position.set(0, top + 0.5, cz + D / 2); scene.add(backRail);
+    for (const sx of [-BALCONY.halfW, BALCONY.halfW]) {
+      const endRail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.9, D), ladderMat);
+      endRail.position.set(sx, top + 0.5, cz); scene.add(endRail);
+      const post = new THREE.Mesh(new THREE.BoxGeometry(0.22, top, 0.22), ladderMat);
+      post.position.set(sx, top / 2, cz + D / 2); scene.add(post);
     }
-    for (let ry = 0.4; ry < top; ry += 0.5) {
-      const rung = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 0.08), ladderMat);
-      rung.position.set(lx, ry, lz - 0.3); scene.add(rung);
+    // mark each hero's dedicated respawn spot with a little glowing pad
+    for (const s of HERO_SPAWNS) {
+      const pad = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.06, 16),
+        new THREE.MeshBasicMaterial({ color: 0x2effa0, transparent: true, opacity: 0.5 }));
+      pad.position.set(s.x, top + 0.12, cz); scene.add(pad);
     }
-    const lamp = new THREE.PointLight(0xffcc88, 6, 12, 2);
-    lamp.position.set(lx, top + 1.4, cz); scene.add(lamp);
-    ladders.push({ x: lx, z: lz, top });
+    // a ladder down to the street at each end
+    for (const lad of LADDERS) {
+      const lx = lad.x, lz = lad.z;
+      for (const rx of [-0.35, 0.35]) {
+        const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, top, 0.1), ladderMat);
+        r.position.set(lx + rx, top / 2, lz - 0.3); scene.add(r);
+      }
+      for (let ry = 0.4; ry < top; ry += 0.5) {
+        const rung = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.08, 0.08), ladderMat);
+        rung.position.set(lx, ry, lz - 0.3); scene.add(rung);
+      }
+      ladders.push({ x: lx, z: lz, top });
+      const lamp = new THREE.PointLight(0xffcc88, 6, 12, 2);
+      lamp.position.set(lx, top + 1.4, cz); scene.add(lamp);
+    }
   }
 
   // zombie spawn end: sickly green glow + crashed saucer hint

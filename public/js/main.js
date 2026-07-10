@@ -1,4 +1,4 @@
-// Boot flow: splash (title) -> loadout menu -> live lobby -> play.
+// Boot flow: splash (title) -> [multiplayer: lobby browser] -> loadout menu -> live lobby -> play.
 import { Net } from './net.js';
 import { HUD, buildMenu, buildSplash } from './hud.js';
 import { Voice } from './voice.js';
@@ -18,19 +18,46 @@ window.ZFM = game; // debug/testing handle
 
 let welcome = null;          // stored 'w' message; consumed when we ENTER GAME
 let currentMode = 'solo';    // 'solo' | 'multi'
+let currentNick = 'Player';
+let targetRoom = null;       // chosen lobby id (multiplayer)
+let targetFresh = false;     // force a brand-new lobby
 
-// ----- splash: pick a mode, then open the loadout menu -----------------------
+// ----- splash: pick a mode -------------------------------------------------
 buildSplash((mode, nick) => {
   currentMode = mode;
+  currentNick = nick;
   hud.hide('splash');
-  menu.open(mode, nick);
-  hud.show('menu');
+  if (mode === 'multi') openBrowser();
+  else { menu.open('solo', nick); hud.show('menu'); }
 });
 
-// ----- loadout menu: pick side/hero/weapon, then JOIN LOBBY ------------------
-const menu = buildMenu(onPlay, () => {   // Back -> splash
+// ----- multiplayer lobby browser -------------------------------------------
+function openBrowser() {
+  targetRoom = null; targetFresh = false;
+  hud.show('browser');
+  refreshBrowser();
+}
+function refreshBrowser() {
+  hud.renderBrowser(null, {});   // clear while loading
+  hud.el.browserList.innerHTML = '<div class="lobbycard empty"><div class="lc-title">Searching for lobbies…</div></div>';
+  net.fetchLobbies((list) => hud.renderBrowser(list, { onJoin: (id) => pickLobby(id, false) }));
+}
+function pickLobby(roomId, fresh) {
+  targetRoom = roomId; targetFresh = fresh;
+  hud.hide('browser');
+  menu.open('multi', currentNick);
+  hud.show('menu');
+}
+document.getElementById('browserQuick').onclick = () => pickLobby(null, false);
+document.getElementById('browserNew').onclick = () => pickLobby(null, true);
+document.getElementById('browserRefresh').onclick = () => refreshBrowser();
+document.getElementById('browserBack').onclick = () => { hud.hide('browser'); hud.show('splash'); };
+
+// ----- loadout menu --------------------------------------------------------
+const menu = buildMenu(onPlay, () => {   // Back -> splash or browser
   hud.hide('menu');
-  hud.show('splash');
+  if (currentMode === 'multi') openBrowser();
+  else hud.show('splash');
 });
 
 function onPlay(join) {
@@ -39,30 +66,34 @@ function onPlay(join) {
   hud.hide('menu');
   hud.show('connmsg');
   document.getElementById('playBtn').disabled = true;
-  // Solo runs the authoritative sim in this very tab — no server, fully offline.
-  net.connect({ t: 'join', nick: join.nick, team: join.team, cls: join.cls,
-                secondary: join.secondary, solo: !!join.solo, local: !!join.solo });
+  net.connect({
+    t: 'join', nick: join.nick, team: join.team, cls: join.cls, secondary: join.secondary,
+    solo: !!join.solo, local: !!join.solo,
+    room: join.solo ? undefined : targetRoom, fresh: join.solo ? undefined : targetFresh,
+  });
 }
 
-// ----- welcome from the (local or remote) hub: show the live lobby ----------
+// ----- welcome from the hub: show the live lobby ---------------------------
 net.on('w', (m) => {
   hud.hide('connmsg');
   document.getElementById('playBtn').disabled = false;
   if (game.running) {
-    // reconnected mid-match: server treats us as a fresh player; resync basics
+    // reconnected mid-match: resync basics
     game.me.id = m.id; game.me.team = m.team;
     game.me.pos.set(m.pos[0], m.pos[1], m.pos[2]);
     game.roster = m.roster || [];
     return;
   }
   welcome = m;
-  game.me.id = m.id;          // so the lobby can highlight our slot & live roster works
+  game.me.id = m.id;
   game.me.team = m.team;
   game.roster = m.roster || [];
+  // A match already in combat (drop-in) — skip the lobby and spawn straight in.
+  if (m.ph && m.ph !== 'prep') { enterGame(); return; }
   hud.showLobby(currentMode, m.roster || [], m.id);
 });
 
-// ----- lobby controls -------------------------------------------------------
+// ----- lobby controls ------------------------------------------------------
 function enterGame() {
   if (!welcome) return;
   hud.hide('lobby');

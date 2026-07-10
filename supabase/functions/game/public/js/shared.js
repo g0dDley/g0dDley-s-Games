@@ -3,8 +3,11 @@
 export const VERSION = '1.0.0';
 export const GAME_NAME = 'ZOMBIES FROM MARS';
 
-export const ROOM_MAX = 16;
+// Roster: 4 Resistance heroes + up to 16 player Zombies (20 seats total).
 export const MAX_RESISTANCE = 4;
+export const MAX_ZOMBIES = 16;
+export const ROOM_MAX = MAX_RESISTANCE + MAX_ZOMBIES;   // 20
+export const LATE_JOIN_SLOTS = 3;   // extra drop-in seats once a match is in combat
 
 export const PHASE = { PREP: 'prep', COMBAT: 'combat', INTERMISSION: 'intermission', END: 'end' };
 export const PREP_TIME = 300;          // seconds, max trap-placing time
@@ -116,8 +119,15 @@ export const ZITEMS = {
             desc: 'Heavy scavenged chainmail. +300 shield health — the most raw armour you can wear.' },
   energy: { name: 'Energy Barrier',  cost: 520, energyHp: 140, regenDelay: 8, look: 'energy',
             desc: 'Martian tech bubble. INVULNERABLE to traps while up; only Hero weapons deplete it. Fully regenerates after 8s without taking Hero damage.' },
+  climb:  { name: 'Mountaineering Gear', cost: 300, climb: true, look: 'climb',
+            desc: 'Pitons & claws. Climb over ANY wall, ramp or obstacle by simply pushing forward into it — the trick every Stalker is born with.' },
 };
-export const ZITEM_ORDER = ['helmet', 'shoes', 'lid', 'riot', 'chain', 'energy'];
+export const ZITEM_ORDER = ['helmet', 'shoes', 'lid', 'riot', 'chain', 'climb', 'energy'];
+
+// Respawn beacon: a death-time choice (not a worn item). Beam back down at the
+// spot you fell with FULL health — the alternative to burning a life at spawn.
+export const BEACON_COST = 380;          // points spent at death to deploy the beacon
+export const CLIMB_SPEED = 4.4;          // vertical climb rate for Stalkers / Mountaineering
 
 export const ZOMBIE_TRAP_RESIST = 0.4;   // player zombies take 40% of trap damage
 export const LUNGE_CD = 5;               // Q cooldown seconds
@@ -132,6 +142,8 @@ export const RESPAWN_INVULN = 3;         // seconds of spawn protection (heroes)
 export const AI_KINDS = {
   walker:   { hp: 60,  speed: 1.7, dmg: 8,  atkCd: 1.2, radius: 0.5,  height: 1.75, reward: 15 },
   runner:   { hp: 45,  speed: 4.3, dmg: 6,  atkCd: 1.0, radius: 0.45, height: 1.7,  reward: 20 },
+  stalker:  { hp: 70,  speed: 5.0, dmg: 7,  atkCd: 0.9, radius: 0.5,  height: 1.7,  reward: 22, climber: true },
+  belcher:  { hp: 150, speed: 2.2, dmg: 14, atkCd: 1.5, radius: 0.72, height: 1.85, reward: 30, spit: true, spitR: 14 },
   brute:    { hp: 260, speed: 1.9, dmg: 18, atkCd: 1.6, radius: 0.8,  height: 2.3,  reward: 40 },
   exploder: { hp: 55,  speed: 3.6, dmg: 0,  atkCd: 1.0, radius: 0.5,  height: 1.7,  reward: 25, boomDmg: 150, boomR: 4 },
 };
@@ -143,6 +155,29 @@ export const WAVES = [
 ];
 export const ZLIVES_BASE = 10;           // + ZLIVES_PER_PLAYER * playerZombieCount
 export const ZLIVES_PER_PLAYER = 5;
+
+// ---- Life-point wave system (replaces per-round zlives) ---------------------
+// The zombie team shares a fluctuating pool of life points. Each zombie death
+// (AI or player) spends 1; damaging the barricade grants extra points. Waves of
+// WAVE_SIZE are released with up to ZOMBIE_ONSCREEN alive at once.
+export const ZOMBIE_LIFE_BASE = 240;     // starting team life-point pool per round
+export const ZOMBIE_ONSCREEN = 30;       // max zombies (AI + players) on the field at once
+export const WAVE_SIZE = 60;             // AI horde released per round from the pool
+export const LIFE_PER_BARRICADE = 14;    // barricade damage needed to earn +1 life point
+export const LIFE_BARRICADE_CAP = 120;   // most bonus life a single round can bank
+// Barricade breach mini-game: a well-timed strike carves a big chunk out and
+// alerts the Heroes that a *player* zombie is breaching.
+export const BARRICADE_STRIKE_DMG = 150; // base chunk on a good strike (x class mult)
+export const BARRICADE_STRIKE_LIFE = 2;  // life points granted to the team per good strike
+
+// ---- Zombie pre-game draft (prep phase) -------------------------------------
+// Zombies cannot start the match early; instead they spend prep drafting. Draft
+// budget grows the longer the Heroes take. Weight points reallocate the AI wave
+// class makeup; free item picks are handed out each elapsed minute.
+export const DRAFT_BASE = 8;             // class-weight points available at prep start
+export const DRAFT_PER_MIN = 5;          // + weight points granted per elapsed prep minute
+export const DRAFT_FREE_ITEMS = 1;       // free zombie item upgrades granted per elapsed minute
+export const HORDE_CLASSES = ['walker', 'runner', 'stalker', 'belcher', 'brute', 'exploder'];
 
 // ---- Traps ------------------------------------------------------------------
 export const TRAPS = {
@@ -185,12 +220,17 @@ export const BLEED = { dps: 5, dur: 5, cap: 40 };
 export const RESPAWN_HERO = 5.0;
 export const RESPAWN_ZOMBIE = 4.0;
 
-// Fire-escape balconies beside the safehouse door — Heroes respawn up here
-// (one storey up) with brief invulnerability, and can climb the ladders (F).
+// One long fire-escape balcony spanning the safehouse frontage, one storey up.
+// Each Hero has a dedicated respawn spot along it (assigned by seat order) and
+// climbs a ladder at either end (press F). Zombies cannot use the ladders.
 export const FIRE_ESCAPE_TOP = 3.4;
-export const FIRE_ESCAPES = [
-  { x: -12.5, z: MAP.doorZ - 11 },
-  { x: 12.5, z: MAP.doorZ - 11 },
+export const BALCONY = { y: FIRE_ESCAPE_TOP, z: MAP.doorZ - 9.5, halfW: 13.5, depth: 3.4 };
+// Dedicated per-hero respawn spots, left→right, one per Resistance seat.
+export const HERO_SPAWNS = [-9.5, -3.2, 3.2, 9.5].map((x) => ({ x, y: BALCONY.y, z: BALCONY.z }));
+// Ladders at both ends of the long balcony.
+export const LADDERS = [
+  { x: -BALCONY.halfW + 1.2, z: BALCONY.z - BALCONY.depth / 2 - 0.4 },
+  { x: BALCONY.halfW - 1.2, z: BALCONY.z - BALCONY.depth / 2 - 0.4 },
 ];
 
 export function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }

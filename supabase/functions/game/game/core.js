@@ -1,14 +1,17 @@
 // Runtime-agnostic authoritative game simulation.
 // Used by server.js (Node) and the Supabase Edge deployment (Deno).
 import {
-  ROOM_MAX, MAX_RESISTANCE, PHASE, PREP_TIME, INTERMISSION_TIME, END_TIME, ROUNDS,
+  ROOM_MAX, MAX_RESISTANCE, MAX_ZOMBIES, LATE_JOIN_SLOTS, PHASE, PREP_TIME, INTERMISSION_TIME, END_TIME, ROUNDS,
   TICK_RATE, MAP, BARRICADE_MAX_HP, START_COINS, ROUND_BONUS, SELL_REFUND,
   HEROES, SECONDARIES, WEAPONS, ZCLASSES, ZOMBIE_TRAP_RESIST,
   LUNGE_CD, LUNGE_TIME, GRAPPLE_DPS_TICK, GRAPPLE_TICK, GRAPPLE_MASH_NEED,
   CLAW_BARRICADE_DMG, AI_KINDS, WAVES, ZLIVES_BASE, ZLIVES_PER_PLAYER,
   TRAPS, BUILDS, BURN, BLEED, RESPAWN_HERO, RESPAWN_ZOMBIE, clamp, dist2,
-  ZPOINTS, ZITEMS, ZCLASS_ORDER, RESPAWN_INVULN, TRAP_TIERS, BUILD_TIERS,
-  FIRE_ESCAPES, FIRE_ESCAPE_TOP,
+  ZPOINTS, ZITEMS, ZITEM_ORDER, ZCLASS_ORDER, RESPAWN_INVULN, TRAP_TIERS, BUILD_TIERS,
+  HERO_SPAWNS, BALCONY, FIRE_ESCAPE_TOP,
+  ZOMBIE_LIFE_BASE, ZOMBIE_ONSCREEN, WAVE_SIZE, LIFE_PER_BARRICADE, LIFE_BARRICADE_CAP,
+  BARRICADE_STRIKE_DMG, BARRICADE_STRIKE_LIFE,
+  DRAFT_BASE, DRAFT_PER_MIN, DRAFT_FREE_ITEMS, HORDE_CLASSES, BEACON_COST,
 } from '../public/js/shared.js';
 
 let nextEntity = 1;
@@ -17,6 +20,12 @@ const eid = () => (nextEntity++).toString(36);
 function now() { return Date.now() / 1000; }
 function rand(a, b) { return a + Math.random() * (b - a); }
 function pickRand(arr) { return arr[(Math.random() * arr.length) | 0]; }
+
+// Grab only triggers right up against a hero on the SAME level — a lunging
+// zombie can't snatch a Hero who's stood up on the fire-escape balcony.
+const GRAB_RANGE = 1.15;              // metres (a few feet)
+const GRAB_RANGE2 = GRAB_RANGE * GRAB_RANGE;
+const GRAB_Y = 1.1;                  // max vertical difference to grab
 
 // ---- zombie armor helpers ---------------------------------------------------
 function newArmor() {
@@ -68,11 +77,17 @@ class Room {
   resetMatch() {
     this.phase = PHASE.PREP;
     this.phaseEnds = now() + PREP_TIME;
+    this.prepStarted = now();
     this.round = 0;
     this.barricadeHp = BARRICADE_MAX_HP;
-    this.zlives = 0;
-    this.spawnQueue = [];
+    this.lifePoints = 0;           // zombie team life-point pool (set at round start)
+    this.releasedCount = 0;        // AI released so far this wave (for 60-per-wave pacing)
+    this.waveNo = 1;
+    this.barDmgAccum = 0;          // barricade damage banked toward bonus life
+    this.barLifeGranted = 0;       // bonus life granted this round (capped)
     this.nextAiSpawn = 0;
+    // even class makeup by default; the zombie draft reallocates these weights
+    this.classWeights = { walker: 4, runner: 2, stalker: 1, belcher: 1, brute: 1, exploder: 1 };
     this.ai.clear();
     this.traps.clear();
     this.builds.clear();
@@ -81,9 +96,39 @@ class Room {
       p.coins = START_COINS;
       p.kills = 0; p.deaths = 0; p.score = 0;
       p.ready = !!p.isBot;
+      p.freeItems = 0;             // free zombie draft picks used
       if (p.bot) { p.bot.placed = 0; p.bot.trapT = 0; }
       this.spawnPlayer(p);
     }
+  }
+
+  // Zombies on the field right now (AI + alive player zombies) — the on-screen cap.
+  countOnFieldZombies() {
+    let n = this.ai.size;
+    for (const p of this.players.values()) if (p.team === 'zombie' && p.alive) n++;
+    return n;
+  }
+
+  // Draft budget grows the longer the Heroes take in prep.
+  draftBudget() {
+    const mins = Math.min(5, Math.floor((now() - this.prepStarted) / 60));
+    return DRAFT_BASE + DRAFT_PER_MIN * mins;
+  }
+  draftFreeItems() {
+    return DRAFT_FREE_ITEMS * (1 + Math.min(5, Math.floor((now() - this.prepStarted) / 60)));
+  }
+
+  // Weighted-random horde class from the current makeup weights.
+  pickHordeClass() {
+    let total = 0;
+    for (const k of HORDE_CLASSES) total += Math.max(0, this.classWeights[k] || 0);
+    if (total <= 0) return 'walker';
+    let r = Math.random() * total;
+    for (const k of HORDE_CLASSES) {
+      r -= Math.max(0, this.classWeights[k] || 0);
+      if (r <= 0) return k;
+    }
+    return 'walker';
   }
 
   // ---- membership -----------------------------------------------------------
@@ -93,11 +138,27 @@ class Room {
     return n;
   }
 
+  // Stable seat index (0-based) of a Hero among the Resistance, by join order,
+  // so each Hero keeps the same dedicated balcony respawn spot.
+  heroSeat(p) {
+    let i = 0;
+    for (const q of this.players.values()) {
+      if (q.team !== 'resistance') continue;
+      if (q.id === p.id) return i;
+      i++;
+    }
+    return 0;
+  }
+
   addPlayer(client, joinMsg) {
     const nick = String(joinMsg.nick || 'Anon').slice(0, 16).trim() || 'Anon';
     let team = joinMsg.team === 'resistance' || joinMsg.team === 'zombie' ? joinMsg.team : 'auto';
-    if (team === 'auto') team = this.countTeam('resistance') < MAX_RESISTANCE ? 'resistance' : 'zombie';
-    if (team === 'resistance' && this.countTeam('resistance') >= MAX_RESISTANCE) team = 'zombie';
+    // Respect both caps: 4 heroes, 16 zombies. Auto-fill the emptier side.
+    const resFull = this.countTeam('resistance') >= MAX_RESISTANCE;
+    const zomFull = this.countTeam('zombie') >= MAX_ZOMBIES;
+    if (team === 'auto') team = !resFull ? 'resistance' : 'zombie';
+    if (team === 'resistance' && resFull) team = 'zombie';
+    if (team === 'zombie' && zomFull && !resFull) team = 'resistance';
 
     const p = {
       id: client.id, client, nick, team,
@@ -111,7 +172,7 @@ class Room {
       speedBoostUntil: 0, statuses: {},
       // zombie progression
       points: ZPOINTS.start, reachedDoor: false, lastPtZ: 0, ptSync: 0,
-      arm: newArmor(), invulnUntil: 0,
+      arm: newArmor(), invulnUntil: 0, freeItems: 0, deathPos: null,
     };
     if (team === 'resistance') {
       const hk = HEROES[joinMsg.cls] ? joinMsg.cls : 'tommy';
@@ -130,7 +191,9 @@ class Room {
       t: 'w', id: p.id, room: this.id, team: p.team, cls: p.cls,
       roster: this.rosterList(), traps: this.trapList(), builds: this.buildList(),
       ph: this.phase, tl: Math.max(0, this.phaseEnds - now()), rd: this.round,
-      bar: this.barricadeHp, barMax: BARRICADE_MAX_HP, zl: this.zlives,
+      bar: this.barricadeHp, barMax: BARRICADE_MAX_HP, zl: this.lifePoints,
+      wave: this.waveNo, weights: this.classWeights, draftBudget: this.draftBudget(),
+      draftFree: this.draftFreeItems(), beaconCost: BEACON_COST,
       pos: [p.x, p.y, p.z],
     });
     this.broadcast({ t: 'ev', k: 'join', id: p.id, nick, team: p.team, cls: p.cls }, p.id);
@@ -163,12 +226,14 @@ class Room {
       cls: zombie ? 'walker' : cls, secondary: 'pistol',
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, anim: 0,
       hp: 100, maxHp: 100, alive: false, deadUntil: 0, killedBy: null,
-      coins: START_COINS, kills: 0, deaths: 0, score: 0, ready: true,
+      // Hero bots "fortify" for a short prep so the zombie player has time to draft.
+      coins: START_COINS, kills: 0, deaths: 0, score: 0, ready: zombie,
+      botReadyAt: zombie ? 0 : now() + rand(20, 30),
       lastFire: 0, lastMelee: 0, lastLunge: -99, lungeUntil: 0, lastSpecial: -99,
       grapple: null, lastClaw: 0, lastMoveT: now(),
       speedBoostUntil: 0, statuses: {},
       points: zombie ? rand(200, 900) : 0, reachedDoor: false, lastPtZ: 0, ptSync: 0,
-      arm: newArmor(), invulnUntil: 0,
+      arm: newArmor(), invulnUntil: 0, freeItems: 0, deathPos: null,
       bot: { wanderT: 0, tx: 0, tz: 0, laneX: rand(-MAP.roadHalfW + 1.5, MAP.roadHalfW - 1.5),
              trapT: 0, placed: 0, wantClass: zombie ? pickRand(['runner', 'stalker', 'belcher', 'brute']) : null, upT: 0 },
     };
@@ -355,8 +420,9 @@ class Room {
     p.yaw = Math.atan2(txv, tzv);
     p.anim = 1;
 
-    // grapple contact during lunge
-    if (p.lungeUntil > t && hero && dist2(p.x, p.z, hero.x, hero.z) < 1.7 && !hero.grapple) {
+    // grapple contact during lunge (same tight range/level as players)
+    if (p.lungeUntil > t && hero && !hero.grapple &&
+        dist2(p.x, p.z, hero.x, hero.z) < GRAB_RANGE2 && Math.abs(p.y - hero.y) < GRAB_Y) {
       this.startGrapple(p, hero);
     }
     // swipe heroes in reach
@@ -388,9 +454,20 @@ class Room {
     p.grapple = null;
     p.invulnUntil = now() + RESPAWN_INVULN;                  // brief spawn protection
     if (p.team === 'resistance') {
-      // heroes respawn up on a fire-escape balcony beside the safehouse door
-      const fe = FIRE_ESCAPES[(Math.random() * FIRE_ESCAPES.length) | 0];
-      p.x = fe.x + rand(-1.4, 1.4); p.y = FIRE_ESCAPE_TOP; p.z = fe.z + 1.2; p.yaw = 0; // face down the road
+      // each Hero respawns at their own dedicated spot on the long balcony
+      const spot = HERO_SPAWNS[this.heroSeat(p) % HERO_SPAWNS.length];
+      p.x = spot.x; p.y = spot.y; p.z = spot.z; p.yaw = 0; // face down the road
+    } else if (p.pendingBeacon) {
+      // Respawn beacon: beam back down at the spot you fell, at full health.
+      p.x = clamp(p.pendingBeacon.x, -MAP.walkHalfW, MAP.walkHalfW);
+      p.z = clamp(p.pendingBeacon.z, MAP.spawnZ + 2, MAP.doorZ - 1);
+      p.y = 0; p.yaw = Math.PI;
+      p.pendingBeacon = null;
+      refillArmor(p);
+      p.lastPtZ = p.z; p.reachedDoor = p.z > MAP.doorZ - 4;
+      p.client.send(armorMsg(p));
+      p.client.send({ t: 'ev', k: 'zpts', pts: Math.floor(p.points), cls: p.cls });
+      this.broadcast({ t: 'ev', k: 'beaconDrop', id: p.id, x: p.x, z: p.z });
     } else {
       p.x = rand(-8, 8); p.y = 0; p.z = MAP.spawnZ + rand(0, 8); p.yaw = Math.PI; // face the safehouse
       refillArmor(p);
@@ -417,25 +494,19 @@ class Room {
 
   startRound() {
     this.round++;
+    // Zombie team life-point pool: grows a little each round and with team size.
     const heroes = Math.max(1, this.countTeam('resistance'));
-    const scale = 0.75 + 0.25 * heroes;
-    const table = WAVES[Math.min(this.round, ROUNDS) - 1];
-    this.spawnQueue = [];
-    for (const [kind, count] of Object.entries(table)) {
-      for (let i = 0; i < Math.round(count * scale); i++) this.spawnQueue.push(kind);
-    }
-    // shuffle
-    for (let i = this.spawnQueue.length - 1; i > 0; i--) {
-      const j = (Math.random() * (i + 1)) | 0;
-      [this.spawnQueue[i], this.spawnQueue[j]] = [this.spawnQueue[j], this.spawnQueue[i]];
-    }
     let humanZ = 0, botZ = 0;
     for (const p of this.players.values()) if (p.team === 'zombie') (p.isBot ? botZ++ : humanZ++);
-    this.zlives = ZLIVES_BASE + ZLIVES_PER_PLAYER * humanZ + 2 * botZ;
+    this.lifePoints = ZOMBIE_LIFE_BASE + 40 * (this.round - 1) + 8 * humanZ + 3 * botZ + 6 * heroes;
+    this.releasedCount = 0;
+    this.waveNo = 1;
+    this.barDmgAccum = 0;
+    this.barLifeGranted = 0;
     this.nextAiSpawn = now() + 2;
     for (const p of this.players.values()) { p.ready = !!p.isBot; if (!p.alive) this.spawnPlayer(p); }
     this.setPhase(PHASE.COMBAT, 9999);
-    this.broadcast({ t: 'ev', k: 'round', rd: this.round, total: ROUNDS, zl: this.zlives });
+    this.broadcast({ t: 'ev', k: 'round', rd: this.round, total: ROUNDS, zl: this.lifePoints, wave: this.waveNo });
   }
 
   endMatch(winner, reason) {
@@ -443,10 +514,17 @@ class Room {
     this.broadcast({ t: 'ev', k: 'gameOver', winner, reason });
   }
 
+  // Only the Heroes can start the match early — Zombies spend prep drafting and
+  // may NOT ready-up prematurely. Start once every Hero is ready (needs >=1 hero).
   allReady() {
     if (this.players.size === 0) return false;
-    for (const p of this.players.values()) if (!p.ready) return false;
-    return true;
+    let heroes = 0;
+    for (const p of this.players.values()) {
+      if (p.team !== 'resistance') continue;
+      heroes++;
+      if (!p.ready) return false;
+    }
+    return heroes > 0;
   }
 
   // ---- messages ---------------------------------------------------------------
@@ -469,7 +547,78 @@ class Room {
       case 'upBuild': this.onUpgradeBuild(p, m); break;
       case 'upTrap': this.onUpgradeTrap(p, m); break;
       case 'fillAI': this.onFillAI(p); break;
+      case 'barStrike': this.onBarStrike(p, m); break;
+      case 'beacon': this.onBeacon(p); break;
+      case 'draft': this.onDraft(p, m); break;
+      case 'draftItem': this.onDraftItem(p, m); break;
     }
+  }
+
+  // ---- barricade breach mini-game ------------------------------------------
+  // A player zombie at the barricade times a strike; a good hit carves out a big
+  // chunk and blares an alert to the Heroes that a *player* is breaching.
+  onBarStrike(p, m) {
+    if (p.team !== 'zombie' || !p.alive || this.phase !== PHASE.COMBAT) return;
+    if (!(p.z > MAP.doorZ - 3.2 && Math.abs(p.x) < 8)) return;
+    const t = now();
+    if (t - (p.lastBarStrike || 0) < 0.5) return;   // rate-limit
+    p.lastBarStrike = t;
+    if (!m.good) { p.client.send({ t: 'ev', k: 'breachMiss' }); return; }
+    const mult = ZCLASSES[p.cls] ? (ZCLASSES[p.cls].hp / ZCLASSES.walker.hp) : 1;
+    const dmg = BARRICADE_STRIKE_DMG * (0.85 + 0.5 * Math.min(1.6, mult));
+    this.damageBarricade(dmg, p);
+    this.addPoints(p, ZPOINTS.clawBarricade * 12);
+    this.grantLife(BARRICADE_STRIKE_LIFE);
+    // alert every Hero: a real player is breaching, and it's serious
+    this.broadcast({ t: 'ev', k: 'breach', id: p.id, nick: p.nick, dmg: Math.round(dmg), bar: this.barricadeHp });
+  }
+
+  // Beacon: pay points at death to beam back down where you fell, full health.
+  onBeacon(p) {
+    if (p.team !== 'zombie' || p.alive || this.phase !== PHASE.COMBAT) return;
+    if (!p.deathPos || (p.points || 0) < BEACON_COST) return;
+    p.points -= BEACON_COST;
+    p.deadUntil = 0;
+    p.pendingBeacon = { x: p.deathPos.x, z: p.deathPos.z };
+    this.spawnPlayer(p);
+  }
+
+  grantLife(n) {
+    if (this.phase !== PHASE.COMBAT || n <= 0) return;
+    this.lifePoints += n;
+    this.broadcast({ t: 'ev', k: 'zlives', zl: this.lifePoints });
+  }
+
+  // ---- pre-game zombie draft (prep phase) ----------------------------------
+  // Reallocate the AI wave class makeup within the (time-grown) draft budget.
+  onDraft(p, m) {
+    if (p.team !== 'zombie' || this.phase !== PHASE.PREP) return;
+    const w = m.weights || {};
+    const budget = this.draftBudget();
+    const nw = {}; let total = 0;
+    for (const k of HORDE_CLASSES) { const v = Math.max(0, Math.round(+w[k] || 0)); nw[k] = v; total += v; }
+    if (total > budget && total > 0) {           // scale allocation down to the budget
+      const f = budget / total;
+      for (const k of HORDE_CLASSES) nw[k] = Math.round(nw[k] * f);
+    }
+    nw.walker = Math.max(nw.walker || 0, 2);      // always keep a walker baseline
+    this.classWeights = nw;
+    this.broadcast({ t: 'ev', k: 'draft', weights: this.classWeights, budget, free: this.draftFreeItems() });
+  }
+
+  // Claim a FREE item upgrade during prep (limited by the time-grown allowance).
+  onDraftItem(p, m) {
+    if (p.team !== 'zombie' || this.phase !== PHASE.PREP) return;
+    const key = String(m.item);
+    const it = ZITEMS[key];
+    if (!it || p.arm.items[key]) return;
+    if ((p.freeItems || 0) >= this.draftFreeItems()) { p.client.send({ t: 'ev', k: 'draftDenied' }); return; }
+    p.freeItems = (p.freeItems || 0) + 1;
+    p.arm.items[key] = true;
+    refillArmor(p);
+    p.client.send(armorMsg(p));
+    p.client.send({ t: 'ev', k: 'draftGot', item: key, left: this.draftFreeItems() - p.freeItems });
+    this.broadcast({ t: 'ev', k: 'reitem', id: p.id, items: Object.keys(p.arm.items) }, p.id);
   }
 
   // Lobby: any player may fill remaining slots with bots and start the match.
@@ -566,7 +715,9 @@ class Room {
 
   onInput(p, m) {
     if (!p.alive) return;
-    if (p.grapple && p.team === 'resistance') { p.yaw = +m.yaw || 0; return; } // held: no movement
+    // Grab lock: NEITHER character can move while a zombie holds a hero — the
+    // only way out is a death or the hero mashing free. Only aim (yaw) updates.
+    if (p.grapple) { p.yaw = +m.yaw || 0; return; }
     const t = now();
     const dt = Math.min(0.5, t - p.lastMoveT);
     p.lastMoveT = t;
@@ -574,8 +725,9 @@ class Room {
     let maxSpeed = base.sprint * (t < p.speedBoostUntil ? 1.6 : 1) * (p.arm ? p.arm.sprintMult : 1);
     if (p.lungeUntil > t) maxSpeed = Math.max(maxSpeed, 18);
     if (p.statuses.charge && p.statuses.charge > t) maxSpeed = Math.max(maxSpeed, 20);
-    const nx = clamp(+m.x || 0, -MAP.walkHalfW - 14, MAP.walkHalfW + 14);
-    const nz = clamp(+m.z || 0, MAP.minZ, MAP.maxZ);
+    // Hard map bounds: inside the side walls and never behind the final barricade.
+    const nx = clamp(+m.x || 0, -MAP.walkHalfW, MAP.walkHalfW);
+    const nz = clamp(+m.z || 0, MAP.minZ + 1, MAP.doorZ - 0.3);
     const ny = clamp(+m.y || 0, 0, 40);
     const d = Math.sqrt(dist2(p.x, p.z, nx, nz));
     if (d <= maxSpeed * dt * 1.8 + 0.6) { p.x = nx; p.z = nz; p.y = ny; }
@@ -589,7 +741,9 @@ class Room {
     if (p.team === 'zombie' && p.lungeUntil > t && !p.grapple) {
       for (const h of this.players.values()) {
         if (h.team !== 'resistance' || !h.alive || h.grapple) continue;
-        if (dist2(p.x, p.z, h.x, h.z) < 1.7 && Math.abs(p.y - h.y) < 1.6) {
+        // must be right up against them AND on the same level — no grabbing
+        // Heroes standing up on the fire-escape balcony.
+        if (dist2(p.x, p.z, h.x, h.z) < GRAB_RANGE2 && Math.abs(p.y - h.y) < GRAB_Y) {
           this.startGrapple(p, h);
           break;
         }
@@ -865,7 +1019,10 @@ class Room {
 
   onReady(p) {
     if (this.phase !== PHASE.PREP && this.phase !== PHASE.INTERMISSION) return;
+    if (p.team !== 'resistance') return;    // only Heroes may ready / start early
     p.ready = true;
+    // A human Hero starting early pulls the fortifying bot Heroes along too.
+    for (const q of this.players.values()) if (q.isBot && q.team === 'resistance') q.ready = true;
     let n = 0;
     for (const q of this.players.values()) if (q.ready) n++;
     this.broadcast({ t: 'ev', k: 'ready', n, total: this.players.size });
@@ -911,6 +1068,11 @@ class Room {
       }
       this.broadcast({ t: 'ev', k: 'aiDie', id: a.id, x: a.x, y: a.y, z: a.z, kind: a.kind });
       this.ai.delete(a.id);
+      // an AI death also drains the team life-point pool
+      if (this.lifePoints > 0) {
+        this.lifePoints = Math.max(0, this.lifePoints - 1);
+        this.broadcast({ t: 'ev', k: 'zlives', zl: this.lifePoints });
+      }
     }
   }
 
@@ -981,22 +1143,26 @@ class Room {
         attacker.client.send({ t: 'ev', k: 'humanKill' });
       }
     }
-    let respawn = 0;
+    let respawn = 0, beacon = false;
     if (p.team === 'zombie') {
-      const aiRemaining = this.ai.size > 0 || this.spawnQueue.length > 0;
-      if (this.phase === PHASE.COMBAT && aiRemaining && this.zlives > 0) {
-        this.zlives--;
-        respawn = RESPAWN_ZOMBIE;
-        this.broadcast({ t: 'ev', k: 'zlives', zl: this.zlives });
+      p.deathPos = { x: p.x, z: p.z };   // remembered for the respawn beacon
+      // every zombie death spends one team life point
+      if (this.phase === PHASE.COMBAT && this.lifePoints > 0) {
+        this.lifePoints = Math.max(0, this.lifePoints - 1);
+        respawn = RESPAWN_ZOMBIE;        // burn a life -> walk back from spawn
+        this.broadcast({ t: 'ev', k: 'zlives', zl: this.lifePoints });
       } else {
-        respawn = -1; // no respawn this round
+        respawn = -1;                    // team is out of life this round
       }
+      // beacon is offered whenever the team can still respawn and you can afford it
+      beacon = this.phase === PHASE.COMBAT && this.lifePoints > 0 && (p.points || 0) >= BEACON_COST;
     } else {
       respawn = RESPAWN_HERO;
     }
     p.deadUntil = respawn > 0 ? now() + respawn : Infinity;
     p.client.send({
       t: 'ev', k: 'died', respawn, killer: killerName, killerIsPlayer: !!isPlayerKiller,
+      beacon, beaconCost: BEACON_COST, pts: Math.floor(p.points || 0),
     });
     this.broadcast({
       t: 'ev', k: 'kill',
@@ -1031,7 +1197,14 @@ class Room {
     if (this.phase !== PHASE.COMBAT) return;
     this.barricadeHp = Math.max(0, this.barricadeHp - dmg);
     if (attacker && attacker.score !== undefined) attacker.score += Math.round(dmg / 10);
-    this.broadcast({ t: 'ev', k: 'bar', hp: this.barricadeHp });
+    // Chipping the barricade feeds the team life-point pool (capped per round).
+    this.barDmgAccum += dmg;
+    while (this.barDmgAccum >= LIFE_PER_BARRICADE && this.barLifeGranted < LIFE_BARRICADE_CAP) {
+      this.barDmgAccum -= LIFE_PER_BARRICADE;
+      this.barLifeGranted++;
+      this.lifePoints++;
+    }
+    this.broadcast({ t: 'ev', k: 'bar', hp: this.barricadeHp, zl: this.lifePoints });
     if (this.barricadeHp <= 0) this.endMatch('zombie', 'The final barricade has fallen. The survivors are lost.');
   }
 
@@ -1059,9 +1232,11 @@ class Room {
     const t = now();
     switch (this.phase) {
       case PHASE.PREP:
+        this.tickBotReady(t);
         if (t >= this.phaseEnds || this.allReady()) this.startRound();
         break;
       case PHASE.INTERMISSION:
+        this.tickBotReady(t);
         if (t >= this.phaseEnds || this.allReady()) this.startRound();
         break;
       case PHASE.END:
@@ -1081,6 +1256,13 @@ class Room {
     this.tickProjectiles(t, dt);
   }
 
+  // Hero bots fortify for a short window, then ready up on their own.
+  tickBotReady(t) {
+    for (const p of this.players.values()) {
+      if (p.isBot && p.team === 'resistance' && !p.ready && p.botReadyAt && t >= p.botReadyAt) p.ready = true;
+    }
+  }
+
   tickRespawns(t) {
     for (const p of this.players.values()) {
       if (!p.alive && p.deadUntil !== Infinity && t >= p.deadUntil) this.spawnPlayer(p);
@@ -1088,11 +1270,15 @@ class Room {
   }
 
   tickCombat(t, dt) {
-    // AI spawning
-    if (this.spawnQueue.length && t >= this.nextAiSpawn) {
-      const n = Math.min(this.spawnQueue.length, 1 + ((Math.random() * 3) | 0));
+    // AI horde: keep the field populated (up to the on-screen cap) while the
+    // team still has life points to spend, paced into waves of WAVE_SIZE. Class
+    // makeup follows the zombie team's draft weights.
+    const onField = this.countOnFieldZombies();
+    if (this.lifePoints > 0 && onField < ZOMBIE_ONSCREEN && t >= this.nextAiSpawn) {
+      const room = Math.min(ZOMBIE_ONSCREEN - onField, Math.max(0, this.lifePoints - onField));
+      const n = Math.min(room, 1 + ((Math.random() * 3) | 0));
       for (let i = 0; i < n; i++) {
-        const kind = this.spawnQueue.pop();
+        const kind = this.pickHordeClass();
         const k = AI_KINDS[kind];
         const a = {
           id: eid(), kind, hp: k.hp, dead: false,
@@ -1101,8 +1287,15 @@ class Room {
           atkT: 0, statuses: {}, wob: Math.random() * 10,
         };
         this.ai.set(a.id, a);
+        this.releasedCount++;
       }
-      this.nextAiSpawn = t + rand(1.0, 2.2);
+      if (this.releasedCount >= WAVE_SIZE) {   // wave crest done — brief lull
+        this.releasedCount = 0; this.waveNo++;
+        this.nextAiSpawn = t + 4.0;
+        this.broadcast({ t: 'ev', k: 'wave', wave: this.waveNo, zl: this.lifePoints });
+      } else {
+        this.nextAiSpawn = t + rand(0.5, 1.4);
+      }
     }
 
     // AI behaviour
@@ -1121,10 +1314,32 @@ class Room {
         const dz = b.z - a.z;
         if (dz > 0 && dz < 2.6 && Math.abs(b.x - a.x) < 2.6) { blocking = b; break; }
       }
+      // Stalkers climb over obstacles instead of clawing them down.
+      if (k.climber && blocking) {
+        a.y = Math.min(3.2, a.y + 3.4 * dt);
+        a.z += speed * dt;
+        blocking = null;
+      } else if (a.y > 0) {
+        a.y = Math.max(0, a.y - 4.5 * dt);
+      }
       // nearby hero to swipe at
       let hero = null;
       for (const h of this.players.values()) {
         if (h.team === 'resistance' && h.alive && dist2(a.x, a.z, h.x, h.z) < 2.6 && Math.abs(h.y - a.y) < 1.8) { hero = h; break; }
+      }
+      // Belchers hurl acid at the nearest Hero from range (even up on the balcony).
+      if (k.spit && !hero && t - a.atkT > k.atkCd * 1.4) {
+        let tgt = null, bd = k.spitR * k.spitR;
+        for (const h of this.players.values()) {
+          if (h.team !== 'resistance' || !h.alive) continue;
+          const d = dist2(a.x, a.z, h.x, h.z);
+          if (d < bd) { bd = d; tgt = h; }
+        }
+        if (tgt) {
+          a.atkT = t;
+          this.damageHero(tgt, k.dmg, null, 'ai');
+          this.broadcast({ t: 'ev', k: 'spit', x: a.x, y: a.y + 1.1, z: a.z, tx: tgt.x, ty: tgt.y + 1, tz: tgt.z });
+        }
       }
 
       const atBarricade = a.z > MAP.doorZ - 2.2 && Math.abs(a.x) < 8;
@@ -1185,8 +1400,9 @@ class Room {
 
     this.tickTraps(t, dt);
 
-    // round end check (resistance clears the wave)
-    if (this.spawnQueue.length === 0 && this.ai.size === 0) {
+    // round end: the zombie team has exhausted its life-point pool and the field
+    // is clear of both AI and living player zombies.
+    if (this.lifePoints <= 0 && this.ai.size === 0) {
       let zombiesAlive = 0;
       for (const p of this.players.values()) if (p.team === 'zombie' && p.alive) zombiesAlive++;
       if (zombiesAlive === 0) {
@@ -1394,8 +1610,8 @@ class Room {
     for (const q of this.projectiles.values()) pr.push([q.id, r2(q.x), r2(q.y), r2(q.z)]);
     return {
       t: 's', ph: this.phase, tl: Math.max(0, Math.round((this.phaseEnds - now()) * 10) / 10),
-      rd: this.round, bar: this.barricadeHp, zl: this.zlives,
-      qn: this.spawnQueue.length + this.ai.size,
+      rd: this.round, bar: this.barricadeHp, zl: this.lifePoints, wave: this.waveNo,
+      qn: this.ai.size,
       pl, ai, pr,
     };
   }
@@ -1407,13 +1623,43 @@ export function createHub() {
   let nextRoom = 1, nextClient = 1;
   const clients = new Map();
 
-  function findRoom(solo) {
+  // A room accepts new players in PREP (up to ROOM_MAX) or, once in combat, as a
+  // late "drop-in" up to LATE_JOIN_SLOTS extra seats.
+  function roomJoinable(r) {
+    if (r.solo) return false;
+    if (r.phase === PHASE.PREP || r.phase === PHASE.INTERMISSION) return r.players.size < ROOM_MAX;
+    if (r.phase === PHASE.COMBAT) return r.players.size < ROOM_MAX + LATE_JOIN_SLOTS;
+    return false;
+  }
+
+  function roomSummary(r) {
+    let heroes = 0, zombies = 0, humans = 0;
+    for (const p of r.players.values()) {
+      if (p.team === 'resistance') heroes++; else zombies++;
+      if (!p.isBot) humans++;
+    }
+    return { id: r.id, heroes, zombies, humans, players: r.players.size,
+             phase: r.phase, wave: r.waveNo || 1, joinable: roomJoinable(r), started: r.phase === PHASE.COMBAT };
+  }
+
+  // The 3 most-populated joinable public lobbies (by human count), for the browser.
+  function lobbyList() {
+    const list = [];
+    for (const r of rooms.values()) if (!r.solo) list.push(roomSummary(r));
+    list.sort((a, b) => b.humans - a.humans || b.players - a.players);
+    return list.filter((s) => s.joinable).slice(0, 3);
+  }
+
+  function findRoom(solo, roomId, fresh) {
     if (solo) {
       const r = new Room(hub, 'solo-' + (nextRoom++), true);
       rooms.set(r.id, r);
       return r;
     }
-    for (const r of rooms.values()) if (!r.solo && r.players.size < ROOM_MAX) return r;
+    if (!fresh) {
+      if (roomId && rooms.has(roomId) && roomJoinable(rooms.get(roomId))) return rooms.get(roomId);
+      if (!roomId) for (const r of rooms.values()) if (roomJoinable(r)) return r;
+    }
     const r = new Room(hub, 'room-' + (nextRoom++));
     rooms.set(r.id, r);
     return r;
@@ -1430,8 +1676,9 @@ export function createHub() {
           let m;
           try { m = JSON.parse(raw); } catch (_) { return; }
           if (!m || typeof m.t !== 'string') return;
+          if (m.t === 'lobbies') { this.send({ t: 'lobbies', list: lobbyList() }); return; }
           if (m.t === 'join' && !this.player) {
-            this.room = findRoom(!!m.solo);
+            this.room = findRoom(!!m.solo, m.room, !!m.fresh);
             this.player = this.room.addPlayer(this, m);
             return;
           }
@@ -1448,6 +1695,7 @@ export function createHub() {
       clients.set(id, client);
       return client;
     },
+    lobbyList,
     stats() {
       return { rooms: rooms.size, clients: clients.size };
     },

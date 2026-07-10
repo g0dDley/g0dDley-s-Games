@@ -233,6 +233,59 @@
   #endNext { font-size: 13px; color: #58708f; }
 
   #connmsg { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 40; font-size: 18px; color: #ffd75e; text-shadow: 0 0 10px #000; }
+
+  /* ---------- beacon button ---------- */
+  #beaconBtn { margin-top: 14px; padding: 12px 26px; font-size: 15px; font-weight: 800; letter-spacing: .06em;
+               border: 0; border-radius: 10px; cursor: pointer; color: #04120a;
+               background: linear-gradient(180deg,#8dff9c,#2fc866); box-shadow: 0 0 22px #2fca6a88; }
+  #beaconBtn:disabled { filter: grayscale(.7); cursor: default; }
+
+  /* ---------- barricade breach mini-game ---------- */
+  #breach { position: fixed; left: 50%; bottom: 128px; transform: translateX(-50%); z-index: 26;
+            width: min(460px, 84vw); text-align: center; border-radius: 10px; padding: 8px; background: #0a0f18cc; }
+  #breachLabel { font-size: 12px; letter-spacing: .08em; color: #ffd75e; margin-bottom: 6px; }
+  #breachBar { position: relative; height: 24px; border-radius: 6px; background: #14202e; border: 1px solid #2a3a4e; overflow: hidden; }
+  #breachZone { position: absolute; top: 0; bottom: 0; background: linear-gradient(180deg,#3d7,#2a6); opacity: .55; }
+  #breachCursor { position: absolute; top: -2px; bottom: -2px; width: 4px; background: #fff; box-shadow: 0 0 8px #fff; }
+  #breachHits { font-size: 13px; font-weight: 800; height: 16px; margin-top: 4px; }
+
+  /* ---------- zombie draft ---------- */
+  #draft { position: fixed; right: 16px; top: 50%; transform: translateY(-50%); z-index: 27;
+           width: min(360px, 90vw); max-height: 88vh; overflow-y: auto; background: #120a18ee; border: 1px solid #4a2f6b;
+           border-radius: 12px; padding: 16px; box-shadow: 0 0 40px #0008; }
+  #draftTitle { font-size: 20px; font-weight: 900; letter-spacing: .06em; color: #c79bff; }
+  #draftSub { font-size: 12px; color: #b7a6cc; margin: 6px 0 10px; }
+  #draftBudget { font-size: 12px; font-weight: 700; color: #9fe870; margin-bottom: 8px; }
+  .draftrow { display: grid; grid-template-columns: 78px 1fr 26px; align-items: center; gap: 8px; margin: 5px 0; }
+  .draftrow .dname { font-size: 11px; letter-spacing: .06em; color: #d7c8ea; }
+  .draftrow input[type=range] { width: 100%; accent-color: #b76fff; }
+  .draftrow .dval { font-size: 12px; color: #fff; text-align: right; }
+  #draftFree { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .dfreehd { width: 100%; font-size: 11px; letter-spacing: .1em; color: #9fe870; }
+  .dfree { padding: 6px 10px; font-size: 11px; border: 1px solid #4a2f6b; border-radius: 7px; cursor: pointer;
+           background: #1c1226; color: #e9d9ff; }
+  .dfree:hover { background: #2a1a3a; }
+  #draftHint { font-size: 11px; color: #8a7ba0; margin-top: 10px; }
+
+  /* ---------- lobby browser ---------- */
+  #browser { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+             background: radial-gradient(circle at 50% 30%, #101826, #05070c 70%); }
+  #browserTitle { font-size: 32px; font-weight: 900; letter-spacing: .16em; color: #7df9ff; text-shadow: 0 0 22px #0af; }
+  #browserSub { font-size: 12px; letter-spacing: .12em; color: #9fe870; text-transform: uppercase; }
+  #browserList { display: flex; flex-direction: column; gap: 10px; width: min(560px, 92vw); margin-top: 6px; }
+  .lobbycard { border: 1px solid #274a63; border-radius: 10px; padding: 12px 16px; background: #0b1220;
+               display: flex; flex-direction: column; gap: 4px; position: relative; }
+  .lobbycard.empty { opacity: .7; border-style: dashed; }
+  .lc-title { font-weight: 800; font-size: 15px; color: #e9f2ff; }
+  .lc-state { font-size: 11px; font-weight: 600; letter-spacing: .06em; color: #ffd75e; margin-left: 6px; }
+  .lc-sub { font-size: 12px; color: #9db2cc; }
+  .lc-join { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); padding: 8px 18px;
+             border: 0; border-radius: 8px; cursor: pointer; font-weight: 800; background: linear-gradient(180deg,#9fe870,#57b83d); color: #05070c; }
+  #browserBtns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+  #browserBtns button { padding: 10px 22px; font-size: 14px; font-weight: 800; border: 0; border-radius: 8px; cursor: pointer; }
+  #browserQuick { background: linear-gradient(180deg,#7df9ff,#22a7d8); color: #05070c; }
+  #browserNew { background: #0a84ff; color: #fff; }
+  #browserRefresh, #browserBack { background: #24303f; color: #cfd8e3; }
 </style>
 </head>
 <body>
@@ -294,6 +347,19 @@
   <div id="lobbyHint">Slots fill live as players and bots join. Any player can fill the rest with bots and start. You spawn straight into the 5-minute build phase.</div>
 </div>
 
+<!-- MULTIPLAYER LOBBY BROWSER -->
+<div id="browser" class="overlay hidden">
+  <div id="browserTitle">FIND A LOBBY</div>
+  <div id="browserSub">The 3 most-populated lobbies · live counts · drop into games in progress</div>
+  <div id="browserList"></div>
+  <div id="browserBtns">
+    <button id="browserQuick">QUICK PLAY</button>
+    <button id="browserNew">NEW LOBBY</button>
+    <button id="browserRefresh">REFRESH</button>
+    <button id="browserBack">◄ BACK</button>
+  </div>
+</div>
+
 <!-- HUD -->
 <div id="hud" class="overlay hidden">
   <div id="crosshair"><span class="h l"></span><span class="h r"></span><span class="v t"></span><span class="v b"></span></div>
@@ -336,6 +402,12 @@
   <div id="cds"></div>
   <div id="tray"></div>
   <div id="centerMsg"></div>
+  <!-- barricade breach mini-game (zombies) -->
+  <div id="breach" class="hidden">
+    <div id="breachLabel">BARRICADE BREACH — press <b>F</b> when the marker hits the zone</div>
+    <div id="breachBar"><div id="breachZone"></div><div id="breachCursor"></div></div>
+    <div id="breachHits"></div>
+  </div>
   <div id="micind" class="hidden">● MICROPHONE ON</div>
   <div id="interact"></div>
 </div>
@@ -371,6 +443,7 @@
   <h1>YOU DED</h1>
   <div id="deathBy"></div>
   <div id="deathTimer"></div>
+  <button id="beaconBtn" class="hidden">📡 RESPAWN BEACON</button>
   <div id="deathUpgradeHint" style="font-size:13px;color:#b7ff6f;margin-top:8px;">Press B to spend your points before you respawn</div>
 </div>
 
@@ -384,6 +457,16 @@
   <div class="upgrid" id="upItemGrid"></div>
   <button id="upClose">CLOSE (B / ESC)</button>
   <div id="upHint">You can upgrade any time you have the points — even while dead, before you respawn.</div>
+</div>
+
+<!-- ZOMBIE PRE-GAME DRAFT (prep only) -->
+<div id="draft" class="hidden">
+  <div id="draftTitle">☣ ZOMBIE WAR COUNCIL</div>
+  <div id="draftSub">You cannot start the match — only the Heroes can. The longer they fortify, the bigger your budget grows. Shape the horde:</div>
+  <div id="draftBudget">DRAFT BUDGET</div>
+  <div id="draftSliders"></div>
+  <div id="draftFree"></div>
+  <div id="draftHint">Sliders set how much of each class the AI horde is made of. Free gear is yours to keep into the match. Press <b>B</b> for your personal evolve/gear shop.</div>
 </div>
 
 <!-- END -->

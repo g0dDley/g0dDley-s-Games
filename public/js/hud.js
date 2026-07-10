@@ -1,7 +1,7 @@
 // HUD, menus, chat, scoreboard, overlays.
 import { TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER, WEAPONS, HEROES, ZCLASSES,
          ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BARRICADE_MAX_HP, PHASE,
-         ROOM_MAX, MAX_RESISTANCE } from './shared.js';
+         ROOM_MAX, MAX_RESISTANCE, MAX_ZOMBIES, HORDE_CLASSES } from './shared.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -66,6 +66,10 @@ export class HUD {
       splash: $('splash'),
       lobby: $('lobby'), lobbyGrid: $('lobbyGrid'), lobbyCount: $('lobbyCount'), lobbySub: $('lobbySub'),
       startBtn: $('startBtn'), fillBtn: $('fillBtn'), leaveBtn: $('leaveBtn'),
+      beaconBtn: $('beaconBtn'),
+      breach: $('breach'), breachZone: $('breachZone'), breachCursor: $('breachCursor'), breachHits: $('breachHits'),
+      draft: $('draft'), draftBudget: $('draftBudget'), draftSliders: $('draftSliders'), draftFree: $('draftFree'),
+      browser: $('browser'), browserList: $('browserList'),
     };
     this._centerT = null;
     this._hitT = null;
@@ -112,8 +116,10 @@ export class HUD {
   setBarricade(hp) {
     this.el.barfill.style.width = `${(hp / BARRICADE_MAX_HP) * 100}%`;
   }
-  setZLives(n, aiLeft) {
-    this.el.zlives.textContent = `ZOMBIE LIVES: ${n}` + (aiLeft !== undefined ? `  ·  HORDE LEFT: ${aiLeft}` : '');
+  setZLives(n, aiLeft, wave) {
+    this.el.zlives.textContent = `LIFE POINTS: ${Math.max(0, Math.round(n || 0))}`
+      + (wave ? `  ·  WAVE ${wave}` : '')
+      + (aiLeft !== undefined ? `  ·  ON FIELD: ${aiLeft}` : '');
   }
   setScore(v) { this.el.scoreval.textContent = v; }
 
@@ -237,19 +243,139 @@ export class HUD {
   sysMsg(text) { this.chatLine('', 'sys'); this.el.chatlog.lastChild.textContent = text; }
 
   // ---- death / end ----------------------------------------------------------------
-  showDeath(killer, isPlayer, respawn) {
+  showDeath(killer, isPlayer, respawn, opts = {}) {
     this.show('death');
     this.el.deathBy.textContent = `Killed by: ${killer} (${isPlayer ? 'Player' : 'AI'})`;
     this._deathRespawn = respawn > 0 ? performance.now() + respawn * 1000 : null;
-    if (respawn <= 0) this.el.deathTimer.textContent = 'No respawns left this round';
+    if (respawn <= 0) this.el.deathTimer.textContent = 'Your team is out of life points this round';
+    // Respawn-beacon option (zombies): beam down where you fell, at full health.
+    const bb = this.el.beaconBtn;
+    if (bb) {
+      if (opts.beacon) {
+        bb.classList.remove('hidden');
+        bb.disabled = false;
+        bb.textContent = `📡 RESPAWN BEACON — drop where you fell (${opts.beaconCost} pts)`;
+        bb.onclick = () => { bb.disabled = true; bb.textContent = 'BEAMING IN...'; if (opts.onBeacon) opts.onBeacon(); };
+      } else {
+        bb.classList.add('hidden');
+      }
+    }
   }
   tickDeath() {
     if (this._deathRespawn) {
       const left = Math.max(0, (this._deathRespawn - performance.now()) / 1000);
-      this.el.deathTimer.textContent = `Respawning in ${left.toFixed(1)}s`;
+      this.el.deathTimer.textContent = `Respawning at spawn in ${left.toFixed(1)}s (burns a life point)`;
     }
   }
-  hideDeath() { this.hide('death'); this._deathRespawn = null; }
+  hideDeath() { this.hide('death'); this._deathRespawn = null; if (this.el.beaconBtn) this.el.beaconBtn.classList.add('hidden'); }
+
+  // ---- barricade breach mini-game -------------------------------------------
+  showBreach() { this.el.breach.classList.remove('hidden'); }
+  hideBreach() { this.el.breach.classList.add('hidden'); }
+  updateBreach(cursor, zoneCenter, zoneHalf) {
+    this.el.breachZone.style.left = `${Math.max(0, (zoneCenter - zoneHalf)) * 100}%`;
+    this.el.breachZone.style.width = `${Math.min(1, 2 * zoneHalf) * 100}%`;
+    this.el.breachCursor.style.left = `${cursor * 100}%`;
+  }
+  breachFeedback(good, hits) {
+    this.el.breachHits.textContent = good ? `BREACH x${hits}! ` : 'MISS';
+    this.el.breachHits.style.color = good ? '#b7ff6f' : '#ff6f5f';
+    const bar = this.el.breach;
+    bar.style.boxShadow = good ? '0 0 22px #5f0' : '0 0 22px #f33';
+    clearTimeout(this._breachT);
+    this._breachT = setTimeout(() => { bar.style.boxShadow = 'none'; }, 200);
+  }
+
+  // ---- zombie pre-game draft ------------------------------------------------
+  showDraft(state) {
+    this._draft = state;
+    this.el.draft.classList.remove('hidden');
+    if (!this._draftBuilt) this._buildDraft();
+    // seed sliders from any known weights
+    if (state.weights) this._applyDraftWeights(state.weights);
+  }
+  hideDraft() { if (this.el.draft) this.el.draft.classList.add('hidden'); }
+
+  _buildDraft() {
+    this._draftBuilt = true;
+    this.el.draftSliders.innerHTML = '';
+    this._draftInputs = {};
+    for (const key of HORDE_CLASSES) {
+      const row = document.createElement('div');
+      row.className = 'draftrow';
+      row.innerHTML = `<span class="dname">${key.toUpperCase()}</span>
+        <input type="range" min="0" max="12" value="0" step="1">
+        <span class="dval">0</span>`;
+      const input = row.querySelector('input'), val = row.querySelector('.dval');
+      input.oninput = () => { val.textContent = input.value; this._emitDraft(); };
+      this._draftInputs[key] = input;
+      this.el.draftSliders.appendChild(row);
+    }
+    // free item picks
+    this.el.draftFree.innerHTML = '<div class="dfreehd">FREE GEAR PICKS</div>';
+    for (const key of ZITEM_ORDER) {
+      const it = ZITEMS[key];
+      const b = document.createElement('button');
+      b.className = 'dfree';
+      b.textContent = it.name;
+      b.title = it.desc;
+      b.onclick = () => { if (this._draft && this._draft.onFreeItem) this._draft.onFreeItem(key); };
+      this.el.draftFree.appendChild(b);
+    }
+  }
+
+  _emitDraft() {
+    const w = {};
+    let total = 0;
+    for (const key of HORDE_CLASSES) { w[key] = +this._draftInputs[key].value; total += w[key]; }
+    if (this._draftBudget !== undefined && total > this._draftBudget) return; // clamp handled by server too
+    if (this._draft && this._draft.onChange) this._draft.onChange(w);
+  }
+  _applyDraftWeights(w) {
+    if (!this._draftInputs) return;
+    for (const key of HORDE_CLASSES) {
+      if (this._draftInputs[key] && w[key] !== undefined) {
+        this._draftInputs[key].value = w[key];
+        this._draftInputs[key].nextElementSibling.textContent = w[key];
+      }
+    }
+  }
+  updateDraft(weights, budget, free) {
+    this._draftBudget = budget;
+    if (weights) this._applyDraftWeights(weights);
+    let used = 0;
+    if (this._draftInputs) for (const k of HORDE_CLASSES) used += +this._draftInputs[k].value;
+    this.el.draftBudget.textContent = `DRAFT BUDGET: ${used} / ${budget} allocated  ·  ${free} free gear picks available`;
+  }
+  draftItemGranted(item, left) {
+    const it = ZITEMS[item];
+    this.centerMsg(`FREE: ${it ? it.name : item} equipped (${left} picks left)`, 1600);
+  }
+
+  // ---- multiplayer lobby browser --------------------------------------------
+  showBrowser() { this.el.browser.classList.remove('hidden'); }
+  hideBrowser() { this.el.browser.classList.add('hidden'); }
+  renderBrowser(list, handlers) {
+    const wrap = this.el.browserList;
+    wrap.innerHTML = '';
+    if (!list || list.length === 0) {
+      const d = document.createElement('div');
+      d.className = 'lobbycard empty';
+      d.innerHTML = `<div class="lc-title">No active lobbies</div><div class="lc-sub">Be the first — start a fresh lobby.</div>`;
+      wrap.appendChild(d);
+    } else {
+      list.forEach((r, i) => {
+        const d = document.createElement('div');
+        d.className = 'lobbycard';
+        const state = r.started ? `IN COMBAT · wave ${r.wave} · drop-in` : 'IN LOBBY';
+        d.innerHTML = `<div class="lc-title">LOBBY ${i + 1} <span class="lc-state">${state}</span></div>
+          <div class="lc-sub">${r.humans} human${r.humans === 1 ? '' : 's'} · ${r.heroes}/4 heroes · ${r.zombies}/16 zombies</div>
+          <button class="lc-join">${r.started ? 'DROP IN' : 'JOIN'}</button>`;
+        d.querySelector('.lc-join').onclick = () => handlers.onJoin(r.id);
+        wrap.appendChild(d);
+      });
+    }
+  }
 
   showEnd(winner, reason) {
     this.show('end');
