@@ -27,16 +27,18 @@ export const MAP = {
   spawnZ: -250,          // zombie end
   doorZ: 16,             // safehouse barricade door plane
   minZ: -262, maxZ: 30,  // hard bounds
-  gridTrap: 2,           // trap snap
+  gridTrap: 4,           // trap snap — one full cell, same size as a floor
   gridBuild: 4,          // build snap
+  cell: 4,               // one grid cell = 4m (floors & walls are 4m wide)
   buildLevel: 3,         // vertical build step
 };
 
 export const BARRICADE_MAX_HP = 4000;
 
 // ---- Economy --------------------------------------------------------------
-export const START_COINS = 600;
-export const ROUND_BONUS = 300;
+// Tuned so a defender can throw up ~10-15 walls AND still afford 5+ traps.
+export const START_COINS = 800;
+export const ROUND_BONUS = 350;
 export const SELL_REFUND = 0.6;
 export const KILL_REWARD = { walker: 15, runner: 20, brute: 40, exploder: 25, player: 60 };
 
@@ -201,9 +203,9 @@ export const TRAP_TIERS = [
 // ---- Builds -----------------------------------------------------------------
 // hp is tier-1; walls/floors/ramps upgrade through 3 material tiers.
 export const BUILDS = {
-  wall: { label: 'WOOD WALL',  cost: 30, hp: 250 },
-  floor:{ label: 'FLOOR/CEILING', cost: 30, hp: 200 },
-  ramp: { label: 'WOOD RAMP',  cost: 30, hp: 200 },
+  wall: { label: 'WOOD WALL',  cost: 15, hp: 250 },
+  floor:{ label: 'FLOOR/CEILING', cost: 15, hp: 200 },
+  ramp: { label: 'WOOD RAMP',  cost: 15, hp: 200 },
 };
 export const BUILD_ORDER = ['wall', 'floor', 'ramp'];
 // Tier 1 wood -> Tier 2 stone -> Tier 3 steel.
@@ -218,19 +220,28 @@ export const BURN = { dps: 8, dur: 4, cap: 60 };    // fire tick to a maximum (d
 export const BLEED = { dps: 5, dur: 5, cap: 40 };
 
 export const RESPAWN_HERO = 5.0;
-export const RESPAWN_ZOMBIE = 4.0;
+export const RESPAWN_ZOMBIE = 10.0;   // 10s — long enough to shop upgrades on the death screen
 
-// One long fire-escape balcony spanning the safehouse frontage, one storey up.
-// Each Hero has a dedicated respawn spot along it (assigned by seat order) and
-// climbs a ladder at either end (press F). Zombies cannot use the ladders.
+// Two fire-escape balconies bolted to the SIDE buildings near the barricade.
+// They run ALONG the road (they do NOT cross the street). Each seats two Heroes
+// and has its own ladder (press F). Zombies cannot use the ladders.
 export const FIRE_ESCAPE_TOP = 3.4;
-export const BALCONY = { y: FIRE_ESCAPE_TOP, z: MAP.doorZ - 9.5, halfW: 13.5, depth: 3.4 };
-// Dedicated per-hero respawn spots, left→right, one per Resistance seat.
-export const HERO_SPAWNS = [-9.5, -3.2, 3.2, 9.5].map((x) => ({ x, y: BALCONY.y, z: BALCONY.z }));
-// Ladders at both ends of the long balcony.
+export const BALCONY = { y: FIRE_ESCAPE_TOP, depthX: 2.8, lenZ: 16 };
+export const BALCONIES = [
+  { x: -(MAP.walkHalfW - 1.6), z: MAP.doorZ - 10 },   // left building
+  { x: (MAP.walkHalfW - 1.6), z: MAP.doorZ - 10 },    // right building
+];
+// Dedicated per-hero respawn spots: seats 0-1 left balcony, 2-3 right balcony.
+export const HERO_SPAWNS = [
+  { x: BALCONIES[0].x, y: FIRE_ESCAPE_TOP, z: BALCONIES[0].z - 4 },
+  { x: BALCONIES[0].x, y: FIRE_ESCAPE_TOP, z: BALCONIES[0].z + 4 },
+  { x: BALCONIES[1].x, y: FIRE_ESCAPE_TOP, z: BALCONIES[1].z - 4 },
+  { x: BALCONIES[1].x, y: FIRE_ESCAPE_TOP, z: BALCONIES[1].z + 4 },
+];
+// A ladder on the road-facing (inner) edge of each balcony.
 export const LADDERS = [
-  { x: -BALCONY.halfW + 1.2, z: BALCONY.z - BALCONY.depth / 2 - 0.4 },
-  { x: BALCONY.halfW - 1.2, z: BALCONY.z - BALCONY.depth / 2 - 0.4 },
+  { x: BALCONIES[0].x + 1.1, z: BALCONIES[0].z },
+  { x: BALCONIES[1].x - 1.1, z: BALCONIES[1].z },
 ];
 
 export function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }

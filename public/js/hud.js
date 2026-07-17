@@ -248,6 +248,10 @@ export class HUD {
     this.el.deathBy.textContent = `Killed by: ${killer} (${isPlayer ? 'Player' : 'AI'})`;
     this._deathRespawn = respawn > 0 ? performance.now() + respawn * 1000 : null;
     if (respawn <= 0) this.el.deathTimer.textContent = 'Your team is out of life points this round';
+    // Only zombies have an upgrade shop to spend on while dead.
+    const dub = document.getElementById('deathUpgradeBtn'), duh = document.getElementById('deathUpgradeHint');
+    if (dub) dub.style.display = opts.isZombie ? '' : 'none';
+    if (duh) duh.style.display = opts.isZombie ? '' : 'none';
     // Respawn-beacon option (zombies): beam down where you fell, at full health.
     const bb = this.el.beaconBtn;
     if (bb) {

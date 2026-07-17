@@ -106,6 +106,12 @@ export function makeAIZombie(kind) {
 // ---- traps -----------------------------------------------------------------
 export function makeTrap(kind) {
   const g = new THREE.Group();
+  // Every trap sits on a full grid cell (4x4, same footprint as a floor) so
+  // they tile edge-to-edge and their placement slot reads clearly.
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(3.9, 0.06, 3.9),
+    new THREE.MeshLambertMaterial({ color: 0x2a2f26 }));
+  pad.position.y = 0.03;
+  g.add(pad);
   switch (kind) {
     case 'mine': {
       const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.16, 12), M(0x4b543e));

@@ -239,6 +239,10 @@
                border: 0; border-radius: 10px; cursor: pointer; color: #04120a;
                background: linear-gradient(180deg,#8dff9c,#2fc866); box-shadow: 0 0 22px #2fca6a88; }
   #beaconBtn:disabled { filter: grayscale(.7); cursor: default; }
+  #deathUpgradeBtn { margin-top: 10px; padding: 11px 24px; font-size: 15px; font-weight: 800; letter-spacing: .04em;
+                     border: 0; border-radius: 10px; cursor: pointer; color: #06110a;
+                     background: linear-gradient(180deg,#b7ff6f,#79c93a); box-shadow: 0 0 20px #8f6; }
+  #deathUpgradeBtn:hover { filter: brightness(1.1); }
 
   /* ---------- barricade breach mini-game ---------- */
   #breach { position: fixed; left: 50%; bottom: 128px; transform: translateX(-50%); z-index: 26;
@@ -444,7 +448,8 @@
   <div id="deathBy"></div>
   <div id="deathTimer"></div>
   <button id="beaconBtn" class="hidden">📡 RESPAWN BEACON</button>
-  <div id="deathUpgradeHint" style="font-size:13px;color:#b7ff6f;margin-top:8px;">Press B to spend your points before you respawn</div>
+  <button id="deathUpgradeBtn">✦ UPGRADE — evolve &amp; buy gear (B)</button>
+  <div id="deathUpgradeHint" style="font-size:13px;color:#9db2cc;margin-top:8px;">You have 10 seconds — spend your points before you respawn.</div>
 </div>
 
 <!-- ZOMBIE UPGRADE SHOP -->

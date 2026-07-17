@@ -4,7 +4,7 @@ import {
   MAP, PHASE, HEROES, ZCLASSES, WEAPONS, SECONDARIES, TRAPS, TRAP_ORDER, BUILDS, BUILD_ORDER,
   LUNGE_CD, LUNGE_TIME, INPUT_RATE, clamp,
   ZCLASS_ORDER, ZITEMS, ZITEM_ORDER, BUILD_TIERS, CLIMB_SPEED, BEACON_COST,
-  DRAFT_BASE, DRAFT_PER_MIN, DRAFT_FREE_ITEMS, HORDE_CLASSES, PREP_TIME,
+  DRAFT_BASE, DRAFT_PER_MIN, DRAFT_FREE_ITEMS, HORDE_CLASSES, PREP_TIME, START_COINS,
 } from './shared.js';
 import { buildWorld } from './world.js';
 import { makeCharacter, makeAIZombie, makeTrap, makeBuild, makeGunMesh } from './models.js';
@@ -182,6 +182,8 @@ export class Game {
       const b = document.getElementById('readyBtn');
       b.classList.add('done'); b.textContent = 'READY ✔ WAITING...';
     };
+    const dub = document.getElementById('deathUpgradeBtn');
+    if (dub) dub.onclick = () => this.openUpgrade();
   }
 
   lockPointer() {
@@ -304,7 +306,7 @@ export class Game {
         const w = WEAPONS[k];
         this.ammo[k] = { mag: w.mag, reserve: Math.round(w.reserve * (h.reserveMult || 1)) };
       }
-      this.me.coins = 600;
+      this.me.coins = START_COINS;
     } else {
       const z = ZCLASSES[this.me.cls];
       this.me.maxHp = z.hp; this.me.hp = z.hp;
@@ -662,10 +664,13 @@ export class Game {
     const kind = order[this.menuIdx];
     const spec = (this.menuMode === 'traps' ? TRAPS : BUILDS)[kind];
     if (this.me.coins < spec.cost) { this.hud.centerMsg('NOT ENOUGH COINS', 900); return; }
+    // Snap to the same grid the ghost previews so placement is exact (no gaps).
+    const g = this.menuMode === 'traps' ? MAP.gridTrap : MAP.gridBuild;
+    const sx = Math.round(p.x / g) * g, sz = Math.round(p.z / g) * g;
     // builds/ramps use the R-controlled rotation; traps snap to facing
     const rotY = this.menuMode === 'build' ? this.buildRot : Math.round(this.me.yaw / (Math.PI / 2)) * (Math.PI / 2);
-    if (this.menuMode === 'traps') this.net.send({ t: 'place', kind, x: p.x, z: p.z, rotY });
-    else this.net.send({ t: 'build', kind, x: p.x, y: 0, z: p.z, rotY });
+    if (this.menuMode === 'traps') this.net.send({ t: 'place', kind, x: sx, z: sz, rotY });
+    else this.net.send({ t: 'build', kind, x: sx, y: 0, z: sz, rotY });
   }
 
   // =========================================================================
@@ -697,7 +702,8 @@ export class Game {
         this.me.grappling = null; this.me.grappledBy = null;
         if (m.pts !== undefined) this.me.points = m.pts;
         this.hud.showDeath(m.killer, m.killerIsPlayer, m.respawn,
-          { beacon: m.beacon, beaconCost: m.beaconCost, pts: m.pts, onBeacon: () => this.net.send({ t: 'beacon' }) });
+          { beacon: m.beacon, beaconCost: m.beaconCost, pts: m.pts, isZombie: this.me.team === 'zombie',
+            onBeacon: () => this.net.send({ t: 'beacon' }) });
         this.hideBreach();
         break;
       }
@@ -923,7 +929,7 @@ export class Game {
         this.trapMeshes.clear();
         for (const [, b] of this.buildMeshes) this.scene.remove(b);
         this.buildMeshes.clear(); this.buildData.clear();
-        if (this.me.team === 'resistance') { this.me.coins = 600; this.hud.setCoins(600); }
+        if (this.me.team === 'resistance') { this.me.coins = START_COINS; this.hud.setCoins(START_COINS); }
         this.lockPointer();
         break;
       }

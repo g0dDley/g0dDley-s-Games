@@ -403,21 +403,10 @@ class Room {
       const dx = clamp(b.laneX + wob - p.x, -1, 1);
       txv = dx * 0.5; tzv = 1;
     }
-    // blocking build? claw it
-    let blocking = null;
-    for (const bb of this.builds.values()) {
-      if (bb.y > 1.5) continue;
-      const dz = bb.z - p.z;
-      if (dz > 0 && dz < 2.4 && Math.abs(bb.x - p.x) < 2.4) { blocking = bb; break; }
-    }
-    if (blocking && t - p.lastMelee > 0.6) {
-      p.lastMelee = t;
-      this.damageBuild(blocking, WEAPONS.claw.dmg);
-      this.broadcast({ t: 'ev', k: 'swing', id: p.id });
-    } else if (!blocking) {
-      p.x = clamp(p.x + txv * speed * dt, -MAP.walkHalfW + 0.6, MAP.walkHalfW - 0.6);
-      p.z = clamp(p.z + tzv * speed * dt, MAP.minZ + 1, MAP.doorZ - 1.6);
-    }
+    // Bot zombies ignore walls just like the horde — only a HUMAN player chooses
+    // to claw down a wall. Bots march straight for the barricade.
+    p.x = clamp(p.x + txv * speed * dt, -MAP.walkHalfW + 0.6, MAP.walkHalfW - 0.6);
+    p.z = clamp(p.z + tzv * speed * dt, MAP.minZ + 1, MAP.doorZ - 1.6);
     p.yaw = Math.atan2(txv, tzv);
     p.anim = 1;
 
@@ -1055,6 +1044,8 @@ class Room {
 
   damageAI(a, dmg, attacker, cause) {
     if (a.dead || this.phase !== PHASE.COMBAT) return;
+    // being shot by a Hero provokes retaliation for a few seconds
+    if (attacker && attacker.team === 'resistance' && attacker.alive) { a.aggro = attacker.id; a.aggroUntil = now() + 5; }
     a.hp -= dmg;
     if (a.hp <= 0) {
       a.dead = true;
@@ -1306,29 +1297,22 @@ class Room {
       this.tickStatusesAI(a, t);
       if (a.statuses.held && a.statuses.held > t) continue;
       if (a.statuses.dance && a.statuses.dance > t) continue;
-      let speed = k.speed * (a.statuses.slow && a.statuses.slow > t ? 0.6 : 1);
+      const speed = k.speed * (a.statuses.slow && a.statuses.slow > t ? 0.6 : 1);
 
-      // nearest blocking build directly ahead
-      let blocking = null;
-      for (const b of this.builds.values()) {
-        if (b.y > 1.5) continue;
-        const dz = b.z - a.z;
-        if (dz > 0 && dz < 2.6 && Math.abs(b.x - a.x) < 2.6) { blocking = b; break; }
-      }
-      // Stalkers climb over obstacles instead of clawing them down.
-      if (k.climber && blocking) {
-        a.y = Math.min(3.2, a.y + 3.4 * dt);
-        a.z += speed * dt;
-        blocking = null;
-      } else if (a.y > 0) {
-        a.y = Math.max(0, a.y - 4.5 * dt);
-      }
-      // nearby hero to swipe at
+      // The AI horde IGNORES walls entirely — it never attacks builds and walks
+      // straight past them (only player-controlled zombies bother with walls).
+      // It marches for the final barricade and only bothers with Heroes when
+      // one is right on top of it, or when a Hero has recently shot it.
       let hero = null;
       for (const h of this.players.values()) {
-        if (h.team === 'resistance' && h.alive && dist2(a.x, a.z, h.x, h.z) < 2.6 && Math.abs(h.y - a.y) < 1.8) { hero = h; break; }
+        if (h.team !== 'resistance' || !h.alive) continue;
+        if (dist2(a.x, a.z, h.x, h.z) < 2.0 * 2.0 && Math.abs(h.y - a.y) < 1.8) { hero = h; break; } // right next to it
       }
-      // Belchers hurl acid at the nearest Hero from range (even up on the balcony).
+      if (!hero && a.aggro && t < a.aggroUntil) {           // provoked: chase the shooter briefly
+        const ag = this.players.get(a.aggro);
+        if (ag && ag.alive && dist2(a.x, a.z, ag.x, ag.z) < 20 * 20) hero = ag; else a.aggro = null;
+      }
+      // Belchers hurl acid at a Hero only when one is within spit range.
       if (k.spit && !hero && t - a.atkT > k.atkCd * 1.4) {
         let tgt = null, bd = k.spitR * k.spitR;
         for (const h of this.players.values()) {
@@ -1345,7 +1329,7 @@ class Room {
 
       const atBarricade = a.z > MAP.doorZ - 2.2 && Math.abs(a.x) < 8;
 
-      if (a.kind === 'exploder' && (blocking || atBarricade)) {
+      if (a.kind === 'exploder' && atBarricade) {
         a.dead = true;
         this.broadcast({ t: 'ev', k: 'aiDie', id: a.id, x: a.x, y: a.y, z: a.z, kind: a.kind });
         this.ai.delete(a.id);
@@ -1353,18 +1337,18 @@ class Room {
         continue;
       }
 
-      if (hero && k.dmg > 0) {
+      if (hero && k.dmg > 0 && dist2(a.x, a.z, hero.x, hero.z) < 2.6 * 2.6 && Math.abs(hero.y - a.y) < 1.9) {
         if (t - a.atkT > k.atkCd) { a.atkT = t; this.damageHero(hero, k.dmg, null, 'ai'); }
-      } else if (blocking) {
-        if (t - a.atkT > k.atkCd) { a.atkT = t; this.damageBuild(blocking, Math.max(6, k.dmg)); }
       } else if (atBarricade) {
         if (t - a.atkT > k.atkCd) { a.atkT = t; this.damageBarricade(Math.max(6, k.dmg), null); }
       } else {
-        // shamble forward toward the door, drifting to lane
-        const wob = Math.sin(t * 0.8 + a.wob) * 0.4;
-        const txv = clamp(a.laneX + wob - a.x, -1, 1);
+        // march for the door — walls are ignored. Drift toward a provoking Hero,
+        // otherwise weave along the lane.
+        let steerX;
+        if (hero) steerX = clamp(hero.x - a.x, -1, 1);
+        else { const wob = Math.sin(t * 0.8 + a.wob) * 0.4; steerX = clamp(a.laneX + wob - a.x, -1, 1); }
         a.z += speed * dt;
-        a.x += txv * speed * 0.4 * dt;
+        a.x += steerX * speed * 0.4 * dt;
         a.x = clamp(a.x, -MAP.walkHalfW + 0.6, MAP.walkHalfW - 0.6);
         if (a.z > MAP.doorZ - 2) a.z = MAP.doorZ - 2;
       }
