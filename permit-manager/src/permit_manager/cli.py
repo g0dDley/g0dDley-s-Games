@@ -81,12 +81,9 @@ def cmd_track(a):
                                       profile.owner.name, profile.owner.email))
         for c in profile.consultants:
             role = f"consultant:{c.discipline.lower().replace(' ', '_')}"
-            rec = tr.upsert(SignatureRecord(fid, title, role, c.name, c.email))
-            # BBA in-house signatures are already applied (authorised) -> signed;
-            # consultants who must sign themselves start as drafted (to send out).
-            if c.signature_authorized and not rec.status == "signed":
-                from datetime import date
-                rec.status, rec.date_signed = "signed", date.today().isoformat()
+            # All signatures are applied manually now, so every block starts
+            # "drafted" (awaiting a signature) - nothing is auto-marked signed.
+            tr.upsert(SignatureRecord(fid, title, role, c.name, c.email))
         tr.save()
         print(f"seeded {len(tr.records)} record(s) for {fid}")
     if a.set:

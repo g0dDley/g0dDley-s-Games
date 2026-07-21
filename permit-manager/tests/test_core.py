@@ -52,24 +52,34 @@ def test_unauthorized_signature_never_filled(tmp_path):
         assert b.reason in ("protected", "awaiting-signature")
 
 
-def test_authorized_signature_placed_but_consultant_is_not(tmp_path):
+def test_no_signatures_placed_by_default(tmp_path):
+    # even an authorised signer with an asset gets NO signature by default -
+    # signatures are added manually.
     p = _profile()
-    # authorised in-house signer (real asset on file)
     p.consultants[0].signature_authorized = True
     p.consultants[0].signature_asset = "assets/signatures/nick_swerdfeger.png"
-    p.consultants[0].signature_date = "2025-07-07"
+    intro = I.introspect(FORM)
+    mp = M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
+                                      form_title="EABO")
+    res = F.fill_overlay(mp, p, tmp_path / "out.pdf")           # default: no sigs
+    assert not any(f.placement == "signature" for f in res.filled)
+    assert not any(f.target and f.target.endswith("signature_date") for f in res.filled)
+
+
+def test_authorized_signature_placed_when_explicitly_enabled(tmp_path):
+    p = _profile()
+    p.consultants[0].signature_authorized = True
+    p.consultants[0].signature_asset = "assets/signatures/nick_swerdfeger.png"
     p.consultants[0].signature_required = False
-    # a second consultant who must sign themselves
     p.consultants.append(Consultant(discipline="MECHANICAL", company="MCW",
                                     name="Paula Terry", signature_required=True))
     intro = I.introspect(FORM)
     mp = M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
                                       form_title="EABO")
-    res = F.fill_overlay(mp, p, tmp_path / "out.pdf")
+    res = F.fill_overlay(mp, p, tmp_path / "out.pdf", apply_signatures=True)
 
     placed = [f for f in res.filled if f.placement == "signature"]
     assert len(placed) == 1 and p.consultants[0].name in placed[0].value
-    # the block that filled the signature also placed its date
     assert any(f.target == "consultants.0.signature_date" for f in res.filled)
     # the consultant (block 2) routes out - signature left blank
     b2 = [b for b in res.blank if b.label.startswith("Part B2 Signature")]

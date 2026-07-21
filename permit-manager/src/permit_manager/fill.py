@@ -69,7 +69,10 @@ def _resolve_value(profile: ProjectProfile, target: str) -> str:
 def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
                  *, mapping_source: str = "cached",
                  fill_low_confidence: bool = False,
-                 sign_date: str | None = None) -> FillResult:
+                 sign_date: str | None = None,
+                 apply_signatures: bool = False) -> FillResult:
+    # By default NO signatures are placed - signature and date fields are left
+    # blank for manual signing. (apply_signatures kept for future use.)
     doc = fitz.open(mapping["source_pdf"])
     res = FillResult(output_pdf=str(out_path), mapping_source=mapping_source)
     today = sign_date or date.today().isoformat()   # date beside an authorised signature
@@ -82,10 +85,10 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
 
         # ---- signature image (only when explicitly authorised) ----------
         if etype == "signature":
-            _handle_signature(page, entry, profile, res)
+            _handle_signature(page, entry, profile, res, apply_signatures)
             continue
         if etype == "sig_date":
-            _handle_sig_date(page, entry, profile, res, today)
+            _handle_sig_date(page, entry, profile, res, today, apply_signatures)
             continue
 
         if entry.get("protected"):
@@ -194,9 +197,11 @@ def _authorized_signer(profile: ProjectProfile, sig_target: str):
     return (who if authorized else None), routes_out
 
 
-def _handle_signature(page, entry, profile, res):
+def _handle_signature(page, entry, profile, res, apply_signatures=False):
     label = entry["label"]
     who, routes_out = _authorized_signer(profile, entry.get("sig_target"))
+    if not apply_signatures:
+        who = None                     # signatures are added manually
     if who is None:
         # never sign on someone's behalf without authorisation
         res.blank.append(BlankField(label, "awaiting-signature" if routes_out else "protected",
@@ -212,9 +217,11 @@ def _handle_signature(page, entry, profile, res):
                                   f"[authorised signature: {who.name}]", placement="signature"))
 
 
-def _handle_sig_date(page, entry, profile, res, today):
+def _handle_sig_date(page, entry, profile, res, today, apply_signatures=False):
     label = entry["label"]
     who, routes_out = _authorized_signer(profile, entry.get("sig_target"))
+    if not apply_signatures:
+        who = None                     # dates accompany manual signatures
     # date beside an authorised signature is always today's date
     value = today if who else ""
     if not value:
