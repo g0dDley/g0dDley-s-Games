@@ -43,7 +43,7 @@
       "note": ""
     },
     {
-      "target": "property_address.__oneline__",
+      "target": "property_address.__streetline__",
       "label": "Address of Project:",
       "page": 0,
       "anchor_rect": [
@@ -165,6 +165,7 @@
     {
       "target": null,
       "label": "Signature (owner):",
+      "type": "signature",
       "page": 0,
       "anchor_rect": [
         351.1,
@@ -172,28 +173,18 @@
         389.8,
         309.1
       ],
-      "type": "text",
-      "place": {
-        "mode": "text",
-        "fontsize": 8.0,
-        "min_fontsize": 5.5,
-        "inline": {
-          "x": 393.8,
-          "y": 307.4,
-          "max_width": 88.2
-        },
-        "wrap": {
-          "x": 351.1,
-          "y": 319.4,
-          "max_width": 130.9
-        }
-      },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "sig_target": "owner",
+      "sig_box": [
+        392.8,
+        295.4,
+        482.1,
+        317.4
+      ]
     },
     {
-      "target": null,
+      "target": "owner.signature_date",
       "label": "Date (owner):",
       "page": 0,
       "anchor_rect": [
@@ -202,7 +193,7 @@
         507.4,
         309.1
       ],
-      "type": "text",
+      "type": "sig_date",
       "place": {
         "mode": "text",
         "fontsize": 8.0,
@@ -220,7 +211,8 @@
       },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "note": "",
+      "sig_target": "owner"
     },
     {
       "target": "owner.address.__oneline__",
@@ -582,6 +574,7 @@
     {
       "target": null,
       "label": "Part B1 Signature:",
+      "type": "signature",
       "page": 0,
       "anchor_rect": [
         351.1,
@@ -589,28 +582,18 @@
         387.6,
         489.0
       ],
-      "type": "text",
-      "place": {
-        "mode": "text",
-        "fontsize": 8.0,
-        "min_fontsize": 5.5,
-        "inline": {
-          "x": 391.6,
-          "y": 487.3,
-          "max_width": 90.4
-        },
-        "wrap": {
-          "x": 351.1,
-          "y": 499.3,
-          "max_width": 130.9
-        }
-      },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "sig_target": "consultants.0",
+      "sig_box": [
+        390.6,
+        475.3,
+        482.1,
+        497.3
+      ]
     },
     {
-      "target": null,
+      "target": "consultants.0.signature_date",
       "label": "Part B1 Date:",
       "page": 0,
       "anchor_rect": [
@@ -619,7 +602,7 @@
         507.4,
         489.0
       ],
-      "type": "text",
+      "type": "sig_date",
       "place": {
         "mode": "text",
         "fontsize": 8.0,
@@ -637,7 +620,8 @@
       },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "note": "",
+      "sig_target": "consultants.0"
     },
     {
       "target": "consultants.0.address.__oneline__",
@@ -849,6 +833,7 @@
     {
       "target": null,
       "label": "Part B2 Signature:",
+      "type": "signature",
       "page": 0,
       "anchor_rect": [
         351.1,
@@ -856,28 +841,18 @@
         387.6,
         560.5
       ],
-      "type": "text",
-      "place": {
-        "mode": "text",
-        "fontsize": 8.0,
-        "min_fontsize": 5.5,
-        "inline": {
-          "x": 391.6,
-          "y": 558.8,
-          "max_width": 90.4
-        },
-        "wrap": {
-          "x": 351.1,
-          "y": 570.8,
-          "max_width": 130.9
-        }
-      },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "sig_target": "consultants.1",
+      "sig_box": [
+        390.6,
+        546.8,
+        482.1,
+        568.8
+      ]
     },
     {
-      "target": null,
+      "target": "consultants.1.signature_date",
       "label": "Part B2 Date:",
       "page": 0,
       "anchor_rect": [
@@ -886,7 +861,7 @@
         507.4,
         560.5
       ],
-      "type": "text",
+      "type": "sig_date",
       "place": {
         "mode": "text",
         "fontsize": 8.0,
@@ -904,7 +879,8 @@
       },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "note": "",
+      "sig_target": "consultants.1"
     },
     {
       "target": "consultants.1.address.__oneline__",
@@ -1116,6 +1092,7 @@
     {
       "target": null,
       "label": "Part B3 Signature:",
+      "type": "signature",
       "page": 0,
       "anchor_rect": [
         351.1,
@@ -1123,28 +1100,18 @@
         387.6,
         631.9
       ],
-      "type": "text",
-      "place": {
-        "mode": "text",
-        "fontsize": 8.0,
-        "min_fontsize": 5.5,
-        "inline": {
-          "x": 391.6,
-          "y": 630.2,
-          "max_width": 90.4
-        },
-        "wrap": {
-          "x": 351.1,
-          "y": 642.2,
-          "max_width": 130.9
-        }
-      },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "sig_target": "consultants.2",
+      "sig_box": [
+        390.6,
+        618.2,
+        482.1,
+        640.2
+      ]
     },
     {
-      "target": null,
+      "target": "consultants.2.signature_date",
       "label": "Part B3 Date:",
       "page": 0,
       "anchor_rect": [
@@ -1153,7 +1120,7 @@
         507.4,
         631.9
       ],
-      "type": "text",
+      "type": "sig_date",
       "place": {
         "mode": "text",
         "fontsize": 8.0,
@@ -1171,7 +1138,8 @@
       },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "note": "",
+      "sig_target": "consultants.2"
     },
     {
       "target": "consultants.2.address.__oneline__",
@@ -1383,6 +1351,7 @@
     {
       "target": null,
       "label": "Part B4 Signature:",
+      "type": "signature",
       "page": 0,
       "anchor_rect": [
         351.1,
@@ -1390,28 +1359,18 @@
         387.6,
         703.3
       ],
-      "type": "text",
-      "place": {
-        "mode": "text",
-        "fontsize": 8.0,
-        "min_fontsize": 5.5,
-        "inline": {
-          "x": 391.6,
-          "y": 701.6,
-          "max_width": 90.4
-        },
-        "wrap": {
-          "x": 351.1,
-          "y": 713.6,
-          "max_width": 130.9
-        }
-      },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "sig_target": "consultants.3",
+      "sig_box": [
+        390.6,
+        689.6,
+        482.1,
+        711.6
+      ]
     },
     {
-      "target": null,
+      "target": "consultants.3.signature_date",
       "label": "Part B4 Date:",
       "page": 0,
       "anchor_rect": [
@@ -1420,7 +1379,7 @@
         507.4,
         703.3
       ],
-      "type": "text",
+      "type": "sig_date",
       "place": {
         "mode": "text",
         "fontsize": 8.0,
@@ -1438,7 +1397,8 @@
       },
       "protected": true,
       "confidence": "n/a",
-      "note": ""
+      "note": "",
+      "sig_target": "consultants.3"
     },
     {
       "target": "consultants.3.address.__oneline__",

@@ -35,20 +35,45 @@ def test_is_protected():
     assert not M.is_protected("Municipality:", "")
 
 
-def test_signature_and_date_never_filled(tmp_path):
+def test_unauthorized_signature_never_filled(tmp_path):
     intro = I.introspect(FORM)
     mp = M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
                                       form_title="EABO")
+    # default profile: no one is signature_authorized
     res = F.fill_overlay(mp, _profile(), tmp_path / "out.pdf", mapping_source="new")
 
-    protected_labels = {b.label for b in res.blank if b.reason == "protected"}
-    # every signature / date anchor must be reported blank & protected
-    assert any("Signature" in l for l in protected_labels)
-    assert any("Date" in l for l in protected_labels)
-    # and none of them may appear as a filled field
-    for f in res.filled:
-        assert "signature" not in f.label.lower()
-        assert not f.label.lower().endswith("date:")
+    # no signature is ever placed without authorisation
+    assert not any(f.placement == "signature" for f in res.filled)
+    # signature/date fields are blank, and only ever for protected/route-out reasons
+    sig_blanks = [b for b in res.blank if "Signature" in b.label or b.label.endswith("Date:")
+                  or "Date (" in b.label or "Date:" in b.label]
+    assert sig_blanks
+    for b in sig_blanks:
+        assert b.reason in ("protected", "awaiting-signature")
+
+
+def test_authorized_signature_placed_but_consultant_is_not(tmp_path):
+    p = _profile()
+    # authorised in-house signer (real asset on file)
+    p.consultants[0].signature_authorized = True
+    p.consultants[0].signature_asset = "assets/signatures/nick_swerdfeger.png"
+    p.consultants[0].signature_date = "2025-07-07"
+    p.consultants[0].signature_required = False
+    # a second consultant who must sign themselves
+    p.consultants.append(Consultant(discipline="MECHANICAL", company="MCW",
+                                    name="Paula Terry", signature_required=True))
+    intro = I.introspect(FORM)
+    mp = M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
+                                      form_title="EABO")
+    res = F.fill_overlay(mp, p, tmp_path / "out.pdf")
+
+    placed = [f for f in res.filled if f.placement == "signature"]
+    assert len(placed) == 1 and p.consultants[0].name in placed[0].value
+    # the block that filled the signature also placed its date
+    assert any(f.target == "consultants.0.signature_date" for f in res.filled)
+    # the consultant (block 2) routes out - signature left blank
+    b2 = [b for b in res.blank if b.label.startswith("Part B2 Signature")]
+    assert b2 and b2[0].reason == "awaiting-signature"
 
 
 def test_discipline_checkbox_filled(tmp_path):

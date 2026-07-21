@@ -1,8 +1,8 @@
 {
   "project_id": "2025-51-centre-st-parish-hall",
-  "project_name": "Parish Hall Interior Renovations",
+  "project_name": "Interior Renovations of Parish Hall - St. George's Memorial Anglican Church",
   "municipality": {
-    "name": "City of Oshawa",
+    "name": "Oshawa",
     "province_state": "ON",
     "country": "CA"
   },
@@ -49,6 +49,9 @@
     "phone": "",
     "fax": "",
     "email": "",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": "",
     "signature_required": true
   },
   "applicant": {
@@ -56,91 +59,152 @@
     "company": "Barry Bryan Associates",
     "license_number": "",
     "address": {
-      "street_address": "250 Water St.",
+      "street_address": "250 Water Street",
       "unit": "201",
       "city": "Whitby",
       "province_state": "ON",
-      "postal_code": "L1N 0G5",
+      "postal_code": "",
       "country": "CA"
     },
     "phone": "(905) 666-5252 ext. 253",
     "fax": "",
     "email": "anguyen@bba-archeng.com",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": "",
     "signature_required": false
   },
   "applicant_same_as_owner": false,
   "architect_of_record": {
-    "name": "Amanda Nguyen",
-    "company": "Barry Bryan Associates",
+    "name": "",
+    "company": "",
     "license_number": "",
     "address": {
-      "street_address": "250 Water St.",
-      "unit": "201",
-      "city": "Whitby",
+      "street_address": "",
+      "unit": "",
+      "city": "",
       "province_state": "ON",
-      "postal_code": "L1N 0G5",
+      "postal_code": "",
       "country": "CA"
     },
-    "phone": "(905) 666-5252 ext. 253",
+    "phone": "",
     "fax": "",
-    "email": "anguyen@bba-archeng.com"
+    "email": "",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": ""
   },
   "coordinator": {
-    "name": "Amanda Nguyen",
-    "company": "Barry Bryan Associates",
+    "name": "",
+    "company": "",
     "license_number": "",
     "address": {
-      "street_address": "250 Water St.",
-      "unit": "201",
-      "city": "Whitby",
+      "street_address": "",
+      "unit": "",
+      "city": "",
       "province_state": "ON",
-      "postal_code": "L1N 0G5",
+      "postal_code": "",
       "country": "CA"
     },
-    "phone": "(905) 666-5252 ext. 253",
+    "phone": "",
     "fax": "",
-    "email": "anguyen@bba-archeng.com"
+    "email": "",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": ""
   },
   "consultants": [
     {
-      "name": "Amanda Nguyen",
+      "name": "Nick Swerdfeger",
       "company": "Barry Bryan Associates",
       "license_number": "",
       "address": {
-        "street_address": "250 Water St.",
+        "street_address": "250 Water Street",
         "unit": "201",
         "city": "Whitby",
         "province_state": "ON",
-        "postal_code": "L1N 0G5",
+        "postal_code": "",
         "country": "CA"
       },
-      "phone": "(905) 666-5252",
-      "fax": "",
-      "email": "anguyen@bba-archeng.com",
+      "phone": "905-666-5252",
+      "fax": "905-666-5256",
+      "email": "nswerdfeger@bba-archeng.com",
+      "signature_authorized": true,
+      "signature_asset": "assets/signatures/nick_swerdfeger.png",
+      "signature_date": "2025-07-07",
       "discipline": "ARCHITECTURAL",
       "discipline_other": "",
-      "role_label": "Architect of Record",
+      "role_label": "Architectural General Review",
+      "signature_required": false
+    },
+    {
+      "name": "Denise Neutel",
+      "company": "MCW Consultants Ltd.",
+      "license_number": "",
+      "address": {
+        "street_address": "207 Queens Quay",
+        "unit": "615",
+        "city": "Toronto",
+        "province_state": "ON",
+        "postal_code": "",
+        "country": "CA"
+      },
+      "phone": "416-598-2920",
+      "fax": "416-598-5394",
+      "email": "dneutel@mcw.com",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "ELECTRICAL",
+      "discipline_other": "",
+      "role_label": "Electrical General Review",
       "signature_required": true
     },
     {
-      "name": "Amanda Nguyen",
+      "name": "Paula Terry",
+      "company": "MCW Consultants Ltd.",
+      "license_number": "",
+      "address": {
+        "street_address": "207 Queens Quay",
+        "unit": "615",
+        "city": "Toronto",
+        "province_state": "ON",
+        "postal_code": "",
+        "country": "CA"
+      },
+      "phone": "416-598-2920",
+      "fax": "416-598-5394",
+      "email": "pterry@mcw.com",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "MECHANICAL",
+      "discipline_other": "",
+      "role_label": "Mechanical General Review",
+      "signature_required": true
+    },
+    {
+      "name": "David Bovill",
       "company": "Barry Bryan Associates",
       "license_number": "",
       "address": {
-        "street_address": "250 Water St.",
+        "street_address": "250 Water Street",
         "unit": "201",
         "city": "Whitby",
         "province_state": "ON",
-        "postal_code": "L1N 0G5",
+        "postal_code": "",
         "country": "CA"
       },
-      "phone": "(905) 666-5252",
-      "fax": "",
-      "email": "anguyen@bba-archeng.com",
+      "phone": "905-666-5252",
+      "fax": "905-666-5256",
+      "email": "dbovill@bba-archeng.com",
+      "signature_authorized": true,
+      "signature_asset": "assets/signatures/david_bovill.png",
+      "signature_date": "2025-07-07",
       "discipline": "STRUCTURAL",
       "discipline_other": "",
-      "role_label": "Structural Engineer of Record",
-      "signature_required": true
+      "role_label": "Structural General Review",
+      "signature_required": false
     }
   ]
 }

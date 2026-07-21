@@ -76,13 +76,16 @@ def cmd_track(a):
         profile = ProjectProfile.load(_project_dir(a.project) / "profile.json")
         mp = M.load_mapping(M.cache_path(MAPPINGS, a.init))
         fid, title = mp["form_id"], mp["form_title"]
-        if profile.owner.signature_required:
+        if profile.owner.signature_required and profile.owner.name:
             tr.upsert(SignatureRecord(fid, title, "owner",
                                       profile.owner.name, profile.owner.email))
         for c in profile.consultants:
-            if c.signature_required:
-                role = f"consultant:{c.discipline.lower().replace(' ', '_')}"
-                tr.upsert(SignatureRecord(fid, title, role, c.name, c.email))
+            role = f"consultant:{c.discipline.lower().replace(' ', '_')}"
+            rec = tr.upsert(SignatureRecord(fid, title, role, c.name, c.email))
+            # BBA in-house signatures are already applied (authorised) -> signed;
+            # consultants who must sign themselves start as drafted (to send out).
+            if c.signature_authorized and not rec.status == "signed":
+                rec.status, rec.date_signed = "signed", c.signature_date
         tr.save()
         print(f"seeded {len(tr.records)} record(s) for {fid}")
     if a.set:

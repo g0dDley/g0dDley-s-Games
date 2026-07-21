@@ -132,6 +132,35 @@ def _txt(target, label, span, col_right, *, protected=False,
     }
 
 
+def _sig(label, sig_span, date_span, sig_target):
+    """Signature field: protected (never data-filled). Carries the box where
+    an AUTHORISED signature image may be placed and who would sign it."""
+    if sig_span is None or date_span is None:
+        return None
+    return {
+        "target": None, "label": label, "type": "signature",
+        "page": sig_span.page, "anchor_rect": sig_span.rect,
+        "protected": True, "confidence": "n/a",
+        "sig_target": sig_target,
+        "sig_box": [round(sig_span.rect[2] + 3, 1), round(sig_span.baseline_y - 12, 1),
+                    round(date_span.rect[0] - 4, 1), round(sig_span.baseline_y + 10, 1)],
+    }
+
+
+def _sig_date(label, date_span, sig_target, col_right):
+    """Date beside a signature: protected; only placed next to an AUTHORISED
+    signature, otherwise left blank for the signer to date."""
+    e = _txt(sig_target + ".signature_date" if sig_target else None, label,
+             date_span, col_right, protected=False)
+    if e is None:
+        return None
+    e["type"] = "sig_date"
+    e["protected"] = True
+    e["sig_target"] = sig_target
+    e["confidence"] = "n/a"
+    return e
+
+
 def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
                                form_title: str) -> dict:
     s = intro.spans
@@ -143,7 +172,7 @@ def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
     # never the long scope. col_right=455 keeps clear of the Permit App box.
     entries.append(_txt("project_name", "Project Description:",
                         find_span(s, "Project Description:", 63), 455))
-    entries.append(_txt("property_address.__oneline__", "Address of Project:",
+    entries.append(_txt("property_address.__streetline__", "Address of Project:",
                         find_span(s, "Address of Project:", 93, 36), 455))
     entries.append(_txt("municipality.name", "Municipality:",
                         find_span(s, "Municipality:", 93, 459), 578))
@@ -152,10 +181,10 @@ def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
                         find_span(s, "Owner’s Company Name:", 300), 234))
     entries.append(_txt("owner.name", "First and Last Name (owner):",
                         find_span(s, "First and Last Name:", 300, 234), 351))
-    entries.append(_txt(None, "Signature (owner):",
-                        find_span(s, "Signature:", 300, 351), 486, protected=True))
-    entries.append(_txt(None, "Date (owner):",
-                        find_span(s, "Date:", 300, 486), 578, protected=True))
+    entries.append(_sig("Signature (owner):", find_span(s, "Signature:", 300, 351),
+                        find_span(s, "Date:", 300, 486), "owner"))
+    entries.append(_sig_date("Date (owner):", find_span(s, "Date:", 300, 486),
+                             "owner", 578))
     entries.append(_txt("owner.address.__oneline__", "Owner's Address:",
                         find_span(s, "Owner's Address:", 329), 234))
     entries.append(_txt("owner.phone", "Telephone (owner):",
@@ -200,10 +229,12 @@ def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
                             comp, 234))
         entries.append(_txt(f"consultants.{i}.name", f"Part B{i+1} First and Last Name:",
                             find_span(s, "First and Last Name:", cy, 234), 351))
-        entries.append(_txt(None, f"Part B{i+1} Signature:",
-                            find_span(s, "Signature:", cy, 351), 486, protected=True))
-        entries.append(_txt(None, f"Part B{i+1} Date:",
-                            find_span(s, "Date:", cy, 486), 578, protected=True))
+        entries.append(_sig(f"Part B{i+1} Signature:",
+                            find_span(s, "Signature:", cy, 351),
+                            find_span(s, "Date:", cy, 486), f"consultants.{i}"))
+        entries.append(_sig_date(f"Part B{i+1} Date:",
+                                 find_span(s, "Date:", cy, 486),
+                                 f"consultants.{i}", 578))
         entries.append(_txt(f"consultants.{i}.address.__oneline__", f"Part B{i+1} Address:",
                             find_span(s, "Address:", cy + 29, 36), 234))
         entries.append(_txt(f"consultants.{i}.phone", f"Part B{i+1} Telephone:",

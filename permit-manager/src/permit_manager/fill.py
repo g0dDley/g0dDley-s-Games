@@ -45,14 +45,18 @@ class FillResult:
         }
 
 
+ROOT = Path(__file__).resolve().parents[2]   # permit-manager/ (for signature assets)
+
+
 def _resolve_value(profile: ProjectProfile, target: str) -> str:
     """Resolve a mapping target to a display string, honouring the
-    ``.__oneline__`` sentinel for composite address/description values."""
-    if target.endswith(".__oneline__"):
-        obj = resolve_path(profile, target[: -len(".__oneline__")])
-        if obj is None:
-            return ""
-        return obj.one_line() if hasattr(obj, "one_line") else str(obj)
+    ``.__oneline__`` / ``.__streetline__`` sentinels for address values."""
+    for suffix, method in ((".__oneline__", "one_line"), (".__streetline__", "street_line")):
+        if target.endswith(suffix):
+            obj = resolve_path(profile, target[: -len(suffix)])
+            if obj is None:
+                return ""
+            return getattr(obj, method)() if hasattr(obj, method) else str(obj)
     val = resolve_path(profile, target)
     if val is None:
         return ""
@@ -70,6 +74,16 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
     for entry in mapping["fields"]:
         label = entry["label"]
         page = doc[entry["page"]]
+
+        etype = entry.get("type")
+
+        # ---- signature image (only when explicitly authorised) ----------
+        if etype == "signature":
+            _handle_signature(page, entry, profile, res)
+            continue
+        if etype == "sig_date":
+            _handle_sig_date(page, entry, profile, res)
+            continue
 
         if entry.get("protected"):
             res.blank.append(BlankField(label, "protected"))
@@ -163,6 +177,49 @@ def _word_wrap(value: str, max_width: float, fontsize: float) -> list[str]:
     if cur:
         lines.append(cur)
     return lines
+
+
+def _authorized_signer(profile: ProjectProfile, sig_target: str):
+    """Return the party if their signature is authorised AND on file, else None,
+    plus a flag for whether the field routes out to a signer."""
+    who = resolve_path(profile, sig_target) if sig_target else None
+    if who is None:
+        return None, False
+    authorized = (getattr(who, "signature_authorized", False)
+                  and getattr(who, "signature_asset", ""))
+    routes_out = getattr(who, "signature_required", False) and not authorized
+    return (who if authorized else None), routes_out
+
+
+def _handle_signature(page, entry, profile, res):
+    label = entry["label"]
+    who, routes_out = _authorized_signer(profile, entry.get("sig_target"))
+    if who is None:
+        # never sign on someone's behalf without authorisation
+        res.blank.append(BlankField(label, "awaiting-signature" if routes_out else "protected",
+                                    entry.get("sig_target", "")))
+        return
+    asset = ROOT / who.signature_asset
+    if not asset.exists():
+        res.blank.append(BlankField(label, "awaiting-signature", entry.get("sig_target", "")))
+        return
+    page.insert_image(fitz.Rect(entry["sig_box"]), filename=str(asset),
+                      keep_proportion=True, overlay=True)
+    res.filled.append(FilledField(label, entry["sig_target"],
+                                  f"[authorised signature: {who.name}]", placement="signature"))
+
+
+def _handle_sig_date(page, entry, profile, res):
+    label = entry["label"]
+    who, routes_out = _authorized_signer(profile, entry.get("sig_target"))
+    value = who.signature_date if who else ""
+    if not value:
+        res.blank.append(BlankField(label, "awaiting-signature" if routes_out else "protected",
+                                    entry.get("sig_target", "")))
+        return
+    _place_text(page, value, entry["place"], _TEXT_COLOR)
+    res.filled.append(FilledField(label, entry.get("sig_target", "") + ".signature_date",
+                                  value, placement="inline"))
 
 
 def render_preview(pdf_path: str | Path, out_png: str | Path,

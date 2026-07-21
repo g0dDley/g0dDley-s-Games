@@ -23,6 +23,12 @@ class Address(BaseModel):
     postal_code: str = ""
     country: str = "CA"
 
+    def street_line(self) -> str:
+        # street + unit only (the form has a separate Municipality field)
+        if not self.street_address:
+            return ""
+        return f"{self.street_address}, Unit {self.unit}" if self.unit else self.street_address
+
     def one_line(self) -> str:
         # an address with only a defaulted province/country is effectively empty
         if not self.street_address and not self.city:
@@ -44,6 +50,15 @@ class Contact(BaseModel):
     phone: str = ""
     fax: str = ""
     email: str = ""
+
+    # Signature handling. A signature is applied ONLY when signature_authorized
+    # is explicitly True AND a signature_asset is on file - used for in-house
+    # BBA signers (Nick, David, Doug) whose signatures we're permitted to use.
+    # Consultants (e.g. MCW) leave these default => their block is never signed
+    # by us and is routed to them to sign.
+    signature_authorized: bool = False
+    signature_asset: str = ""      # path (relative to project root) to a PNG
+    signature_date: str = ""       # date placed beside an authorized signature
 
 
 class LegalDescription(BaseModel):

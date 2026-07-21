@@ -37,10 +37,30 @@ preview for flat forms. You review and approve.
 The strategy is detected on introspection and recorded in the mapping cache, so
 you don't choose it per-fill.
 
+## Signatures (authorized only)
+
+Signature/date fields are `protected` and never receive mapped data. A
+signature image is placed **only** when a party is explicitly
+`signature_authorized` **and** has a `signature_asset` (PNG) on file — used for
+in-house BBA signers whose signatures we're permitted to reuse:
+
+- **Nick Swerdfeger** — architectural/design
+- **David Bovill** — structural (**Doug McLaughlin** is the alternate)
+
+A consultant (e.g. MCW's Denise Neutel / Paula Terry) is never authorized, so
+their block is filled with data but left **unsigned and undated**, and the
+tracker/outreach routes it out to them to sign. Authorized signers are marked
+`signed` in the tracker automatically; the review summary flags every applied
+signature as **AUTHORISED SIGNATURE — confirm permission + date**.
+
+Signature PNGs live in `assets/signatures/` (extracted once from a signed
+copy). Treat them as sensitive.
+
 ## Guardrails
 
 - Signature and signature-date fields are marked `protected` and are **never**
-  written, regardless of any mapping.
+  written from a data mapping. They are only ever filled by an explicitly
+  authorized signature (above); a consultant's signature is never applied.
 - Fields with no confident mapping are left **unmapped** (never guessed) and
   surfaced in the summary.
 - Missing values are **never** filled with placeholder text. An empty mapped
