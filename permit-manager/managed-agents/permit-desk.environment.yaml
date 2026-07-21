@@ -1,0 +1,7 @@
+name: permit-desk
+config:
+  type: cloud
+  networking:
+    # unrestricted egress: the researcher browses the web and the paperwork
+    # agent runs `pip install` for the permit-manager dependencies.
+    type: unrestricted
