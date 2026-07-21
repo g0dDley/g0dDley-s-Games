@@ -47,9 +47,20 @@ in-house BBA signers whose signatures we're permitted to reuse:
 - **Nick Swerdfeger** — architectural/design
 - **David Bovill** — structural (**Doug McLaughlin** is the alternate)
 
-A consultant (e.g. MCW's Denise Neutel / Paula Terry) is never authorized, so
-their block is filled with data but left **unsigned and undated**, and the
-tracker/outreach routes it out to them to sign. Authorized signers are marked
+By default **no signatures are placed at all** — every Signature and Date field
+is left blank for manual signing.
+
+**Unknown consultant signer** (`signer_known: false`, the default for outside
+consultants): the individual who will sign often isn't known when the form goes
+out. For those blocks the form shows only the **firm's Company + address** and
+**checks the discipline box** — the person's name, phone, email, signature and
+date are left blank for them to complete. In-house blocks where the signer is
+known (`signer_known: true`, e.g. BBA's Nick/David) show the full name and
+contact.
+
+Part B blocks are laid out top-to-bottom in the **checkbox order**
+(Architectural, Structural, Mechanical, Electrical, Site Services, Other),
+regardless of the order consultants appear in the profile. Authorized signers are marked
 `signed` in the tracker automatically; the review summary flags every applied
 signature as **AUTHORISED SIGNATURE — confirm permission + date**.
 

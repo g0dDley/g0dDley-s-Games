@@ -129,59 +129,14 @@
       "phone": "905-666-5252",
       "fax": "905-666-5256",
       "email": "nswerdfeger@bba-archeng.com",
-      "signature_authorized": true,
-      "signature_asset": "assets/signatures/nick_swerdfeger.png",
+      "signature_authorized": false,
+      "signature_asset": "",
       "signature_date": "",
       "discipline": "ARCHITECTURAL",
       "discipline_other": "",
       "role_label": "Architectural General Review",
-      "signature_required": false
-    },
-    {
-      "name": "Denise Neutel",
-      "company": "MCW Consultants Ltd.",
-      "license_number": "",
-      "address": {
-        "street_address": "207 Queens Quay",
-        "unit": "615",
-        "city": "Toronto",
-        "province_state": "ON",
-        "postal_code": "",
-        "country": "CA"
-      },
-      "phone": "416-598-2920",
-      "fax": "416-598-5394",
-      "email": "dneutel@mcw.com",
-      "signature_authorized": false,
-      "signature_asset": "",
-      "signature_date": "",
-      "discipline": "ELECTRICAL",
-      "discipline_other": "",
-      "role_label": "Electrical General Review",
-      "signature_required": true
-    },
-    {
-      "name": "Paula Terry",
-      "company": "MCW Consultants Ltd.",
-      "license_number": "",
-      "address": {
-        "street_address": "207 Queens Quay",
-        "unit": "615",
-        "city": "Toronto",
-        "province_state": "ON",
-        "postal_code": "",
-        "country": "CA"
-      },
-      "phone": "416-598-2920",
-      "fax": "416-598-5394",
-      "email": "pterry@mcw.com",
-      "signature_authorized": false,
-      "signature_asset": "",
-      "signature_date": "",
-      "discipline": "MECHANICAL",
-      "discipline_other": "",
-      "role_label": "Mechanical General Review",
-      "signature_required": true
+      "signature_required": true,
+      "signer_known": true
     },
     {
       "name": "David Bovill",
@@ -198,13 +153,62 @@
       "phone": "905-666-5252",
       "fax": "905-666-5256",
       "email": "dbovill@bba-archeng.com",
-      "signature_authorized": true,
-      "signature_asset": "assets/signatures/david_bovill.png",
+      "signature_authorized": false,
+      "signature_asset": "",
       "signature_date": "",
       "discipline": "STRUCTURAL",
       "discipline_other": "",
       "role_label": "Structural General Review",
-      "signature_required": false
+      "signature_required": true,
+      "signer_known": true
+    },
+    {
+      "name": "",
+      "company": "MCW Consultants Ltd.",
+      "license_number": "",
+      "address": {
+        "street_address": "207 Queens Quay",
+        "unit": "615",
+        "city": "Toronto",
+        "province_state": "ON",
+        "postal_code": "",
+        "country": "CA"
+      },
+      "phone": "",
+      "fax": "",
+      "email": "dneutel@mcw.com",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "ELECTRICAL",
+      "discipline_other": "",
+      "role_label": "Electrical General Review",
+      "signature_required": true,
+      "signer_known": false
+    },
+    {
+      "name": "",
+      "company": "MCW Consultants Ltd.",
+      "license_number": "",
+      "address": {
+        "street_address": "207 Queens Quay",
+        "unit": "615",
+        "city": "Toronto",
+        "province_state": "ON",
+        "postal_code": "",
+        "country": "CA"
+      },
+      "phone": "",
+      "fax": "",
+      "email": "pterry@mcw.com",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "MECHANICAL",
+      "discipline_other": "",
+      "role_label": "Mechanical General Review",
+      "signature_required": true,
+      "signer_known": false
     }
   ]
 }

@@ -69,6 +69,7 @@ def test_no_signatures_placed_by_default(tmp_path):
 def test_authorized_signature_placed_when_explicitly_enabled(tmp_path):
     p = _profile()
     p.consultants[0].signature_authorized = True
+    p.consultants[0].signer_known = True
     p.consultants[0].signature_asset = "assets/signatures/nick_swerdfeger.png"
     p.consultants[0].signature_required = False
     p.consultants.append(Consultant(discipline="MECHANICAL", company="MCW",
@@ -104,6 +105,51 @@ def test_empty_value_left_blank(tmp_path):
     assert any(b.reason == "no-value" for b in res.blank)
     filled_targets = {f.target for f in res.filled}
     assert "consultants.1.company" not in filled_targets
+
+
+def _map():
+    intro = I.introspect(FORM)
+    return M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
+                                        form_title="EABO")
+
+
+def test_unknown_signer_shows_company_and_address_only(tmp_path):
+    p = ProjectProfile(project_id="t", consultants=[
+        Consultant(discipline="MECHANICAL", company="MCW Consultants Ltd.",
+                   name="Someone Specific", email="x@mcw.com", phone="416-000-0000",
+                   address=Address(street_address="207 Queens Quay", city="Toronto"),
+                   signer_known=False)])
+    res = F.fill_overlay(_map(), p, tmp_path / "out.pdf")
+    filled = {f.target: f.value for f in res.filled}
+    assert filled.get("consultants.0.company") == "MCW Consultants Ltd."
+    assert "consultants.0.address.__oneline__" in filled          # address shown
+    assert any(f.target == "consultants.0.discipline" for f in res.filled)  # box checked
+    # person-specific fields are NOT on the form
+    assert "consultants.0.name" not in filled
+    assert "consultants.0.phone" not in filled
+    assert "consultants.0.email" not in filled
+
+
+def test_known_signer_shows_name(tmp_path):
+    p = ProjectProfile(project_id="t", consultants=[
+        Consultant(discipline="ARCHITECTURAL", company="BBA", name="Nick Swerdfeger",
+                   email="n@bba.com", signer_known=True)])
+    res = F.fill_overlay(_map(), p, tmp_path / "out.pdf")
+    filled = {f.target: f.value for f in res.filled}
+    assert filled.get("consultants.0.name") == "Nick Swerdfeger"
+    assert filled.get("consultants.0.email") == "n@bba.com"
+
+
+def test_blocks_ordered_by_discipline(tmp_path):
+    p = ProjectProfile(project_id="t", consultants=[
+        Consultant(discipline="ELECTRICAL", company="E"),
+        Consultant(discipline="ARCHITECTURAL", company="A"),
+        Consultant(discipline="STRUCTURAL", company="S")])
+    res = F.fill_overlay(_map(), p, tmp_path / "out.pdf")
+    disc = {f.label: f.value for f in res.filled if "discipline" in f.label}
+    assert disc["Part B block 1 - discipline"] == "ARCHITECTURAL"
+    assert disc["Part B block 2 - discipline"] == "STRUCTURAL"
+    assert disc["Part B block 3 - discipline"] == "ELECTRICAL"
 
 
 def test_empty_address_not_filled(tmp_path):

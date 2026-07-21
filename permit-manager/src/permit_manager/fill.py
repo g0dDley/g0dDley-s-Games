@@ -14,7 +14,26 @@ from pathlib import Path
 
 import fitz  # PyMuPDF
 
-from .schema import ProjectProfile, resolve_path
+from .schema import DISCIPLINE_ORDER, ProjectProfile, resolve_path
+
+
+def _prepare_fill_profile(profile: ProjectProfile) -> ProjectProfile:
+    """Return a copy of the profile arranged for filling:
+    * consultants ordered by the form's discipline sequence (Architectural,
+      Structural, Mechanical, Electrical, ...), so Part B blocks read top-down
+      in checkbox order;
+    * for consultants whose individual signer isn't known, keep only the firm
+      Company + address (and the discipline, so the box is still checked) and
+      blank the person-specific fields on the form. The original profile is
+      untouched, so records/outreach still have the contact details.
+    """
+    p = profile.model_copy(deep=True)
+    p.consultants.sort(key=lambda c: DISCIPLINE_ORDER.index(c.discipline)
+                       if c.discipline in DISCIPLINE_ORDER else len(DISCIPLINE_ORDER))
+    for c in p.consultants:
+        if not c.signer_known:
+            c.name = c.phone = c.fax = c.email = ""   # company + address remain
+    return p
 
 
 @dataclass
@@ -73,6 +92,7 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
                  apply_signatures: bool = False) -> FillResult:
     # By default NO signatures are placed - signature and date fields are left
     # blank for manual signing. (apply_signatures kept for future use.)
+    profile = _prepare_fill_profile(profile)
     doc = fitz.open(mapping["source_pdf"])
     res = FillResult(output_pdf=str(out_path), mapping_source=mapping_source)
     today = sign_date or date.today().isoformat()   # date beside an authorised signature

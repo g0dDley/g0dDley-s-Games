@@ -113,6 +113,18 @@ class Consultant(Contact):
     discipline_other: str = ""     # text when discipline == "OTHER"
     role_label: str = ""           # free text, e.g. "Structural Engineer of Record"
     signature_required: bool = True
+    # When the individual signer isn't known yet (typical for outside
+    # consultants) leave this False: the form shows only the firm's Company +
+    # address and checks the discipline box; the person's name is left blank
+    # for them to complete. Set True for in-house blocks where the signer is
+    # known (e.g. BBA's Nick / David).
+    signer_known: bool = False
+
+
+# Disciplines in the order the checkboxes are printed on the form (left to
+# right); Part B blocks are laid out top-to-bottom in this order.
+DISCIPLINE_ORDER = ["ARCHITECTURAL", "STRUCTURAL", "MECHANICAL",
+                    "ELECTRICAL", "SITE SERVICES", "OTHER"]
 
 
 class ProjectProfile(BaseModel):
