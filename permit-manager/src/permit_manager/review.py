@@ -6,7 +6,7 @@ from .fill import FillResult
 _REASON_LABEL = {
     "protected": "signature/date - never filled",
     "unmapped": "no confident mapping",
-    "no-value": "mapped, but profile value is empty",
+    "no-value": "needs manual entry or an attachment (no value on file)",
     "low-confidence-skipped": "low-confidence mapping - needs your OK",
 }
 
@@ -27,7 +27,8 @@ def assumption_summary(res: FillResult, mapping: dict) -> str:
 
     lines.append(f"FILLED ({len(res.filled)}):")
     for f in res.filled:
-        lines.append(f"  + {f.label:<34} <- {f.target:<28} = {f.value!r}")
+        tag = "  [wrapped below label]" if f.placement == "wrap-below" else ""
+        lines.append(f"  + {f.label:<34} <- {f.target:<28} = {f.value!r}{tag}")
 
     if res.low_confidence:
         lines.append("")

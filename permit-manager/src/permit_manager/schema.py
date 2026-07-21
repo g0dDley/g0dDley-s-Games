@@ -24,6 +24,9 @@ class Address(BaseModel):
     country: str = "CA"
 
     def one_line(self) -> str:
+        # an address with only a defaulted province/country is effectively empty
+        if not self.street_address and not self.city:
+            return ""
         bits = [self.street_address]
         if self.unit:
             bits.append(f"Unit {self.unit}")

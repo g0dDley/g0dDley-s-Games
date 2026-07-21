@@ -43,10 +43,23 @@ you don't choose it per-fill.
   written, regardless of any mapping.
 - Fields with no confident mapping are left **unmapped** (never guessed) and
   surfaced in the summary.
+- Missing values are **never** filled with placeholder text. An empty mapped
+  field is left blank and the summary flags it as *needs manual entry or an
+  attachment* — with a suggestion from known info where one exists.
 - AI-proposed (low-confidence) mappings are shown but **not written** unless you
   pass `--approve-low`.
 - If a blank form's checksum changes, the fill step warns that the cached
   mapping is stale instead of silently misfilling.
+
+### Overflow: never truncate, never overlap
+
+A value is **never** truncated. Each overlay field has two placement slots: an
+*inline* slot (right of the label) and a *wrap* slot (a full-width line in the
+whitespace just below the label). If a value fits inline without overlapping the
+next cell it goes inline; otherwise the whole value is written on the wrap line
+below the label — shrinking the font within a floor if needed — so it never
+runs over the form's printed text. The project *description* is taken from the
+short project **name** so it fits at the top of the form on one line.
 
 ## Layout
 

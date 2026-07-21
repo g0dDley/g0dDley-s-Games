@@ -21,6 +21,7 @@ class FilledField:
     label: str
     target: str
     value: str
+    placement: str = "inline"   # "inline" | "wrap-below" | "checkbox"
 
 @dataclass
 class BlankField:
@@ -93,11 +94,10 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
             elif not box:
                 res.blank.append(BlankField(label, "no-value", target))
             else:
-                cx = (box[0] + box[2]) / 2
                 cy = (box[1] + box[3]) / 2 + 3
                 page.insert_text((box[0] + 1, cy), "X",
                                  fontsize=entry["place"]["fontsize"], color=(0, 0, 0))
-                ff = FilledField(label, target, value)
+                ff = FilledField(label, target, value, placement="checkbox")
                 (res.low_confidence if conf == "low" else res.filled).append(ff)
             continue
 
@@ -107,11 +107,8 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
             res.blank.append(BlankField(label, "no-value", target))
             continue
 
-        place = entry["place"]
-        value = _shrink_to_width(value, place["fontsize"], place["max_width"])
-        page.insert_text((place["x"], place["y"]), value,
-                         fontsize=place["fontsize"], color=(0, 0, 0.55))
-        ff = FilledField(label, target, value)
+        placement = _place_text(page, value, entry["place"], _TEXT_COLOR)
+        ff = FilledField(label, target, value, placement=placement)
         (res.low_confidence if conf == "low" else res.filled).append(ff)
 
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
@@ -119,13 +116,53 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
     return res
 
 
-def _shrink_to_width(text: str, fontsize: float, max_width: float) -> str:
-    """Truncate with an ellipsis if the text would overrun its blank."""
-    if max_width <= 0:
-        return text
-    while fitz.get_text_length(text, fontsize=fontsize) > max_width and len(text) > 1:
-        text = text[:-2] + "…"
-    return text
+_TEXT_COLOR = (0.0, 0.0, 0.55)  # subtle blue, distinct from the printed form
+
+
+def _place_text(page, value: str, place: dict, color) -> str:
+    """Place ``value`` without ever truncating and without overlapping the
+    next cell. Inline if it fits; otherwise on the wrap line below the label,
+    shrinking the font (down to a floor) or, as a last resort, breaking into
+    stacked lines. Returns the placement used.
+    """
+    fs = place["fontsize"]
+    floor = place.get("min_fontsize", 5.5)
+    inline, wrap = place["inline"], place["wrap"]
+
+    if fitz.get_text_length(value, fontsize=fs) <= inline["max_width"]:
+        page.insert_text((inline["x"], inline["y"]), value, fontsize=fs, color=color)
+        return "inline"
+
+    # wrap below: shrink font until the whole value fits the wider wrap slot
+    cur = fs
+    while cur > floor and fitz.get_text_length(value, fontsize=cur) > wrap["max_width"]:
+        cur = round(cur - 0.5, 2)
+
+    if fitz.get_text_length(value, fontsize=cur) <= wrap["max_width"]:
+        page.insert_text((wrap["x"], wrap["y"]), value, fontsize=cur, color=color)
+        return "wrap-below"
+
+    # last resort (very long values): stack full words across multiple lines,
+    # still never truncating a character.
+    y = wrap["y"]
+    for line in _word_wrap(value, wrap["max_width"], floor):
+        page.insert_text((wrap["x"], y), line, fontsize=floor, color=color)
+        y += floor + 1.5
+    return "wrap-below"
+
+
+def _word_wrap(value: str, max_width: float, fontsize: float) -> list[str]:
+    words, lines, cur = value.split(" "), [], ""
+    for w in words:
+        trial = f"{cur} {w}".strip()
+        if fitz.get_text_length(trial, fontsize=fontsize) <= max_width or not cur:
+            cur = trial
+        else:
+            lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines
 
 
 def render_preview(pdf_path: str | Path, out_png: str | Path,

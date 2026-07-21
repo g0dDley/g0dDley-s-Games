@@ -27,7 +27,8 @@ class FormField:
 class TextSpan:
     text: str
     page: int
-    rect: list[float]    # [x0, y0, x1, y1]
+    rect: list[float]        # [x0, y0, x1, y1]
+    baseline_y: float = 0.0  # text baseline (span origin y), for exact alignment
 
 
 @dataclass
@@ -67,6 +68,7 @@ def introspect(path: str | Path) -> Introspection:
                         spans.append(TextSpan(
                             text=t, page=pno,
                             rect=[round(c, 1) for c in span["bbox"]],
+                            baseline_y=round(span["origin"][1], 1),
                         ))
 
     return Introspection(

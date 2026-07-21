@@ -95,21 +95,37 @@ _DISCIPLINE_X = {            # x0 of each discipline checkbox glyph, per block r
 }
 _BLOCKS = 4                  # Part B blocks on the page
 
+PAD_X = 4.0                  # gap between label and inline value
+PAD_R = 4.0                  # right-edge padding inside a cell
+WRAP_DY = 12.0               # how far below the baseline the wrap line sits
 
-def _txt(target, label, span, dx, baseline_dy, max_width, *, protected=False,
-         confidence="high", note="", fontsize=8.0):
+
+def _txt(target, label, span, col_right, *, protected=False,
+         confidence="high", note="", fontsize=8.0, min_fontsize=5.5):
+    """Build a text field with an inline slot (right of the label) and a
+    wrap slot (a full-width line just below the label, in the row's
+    whitespace). The fill step uses inline when the value fits without
+    overlapping the next cell, otherwise the wrap slot - never truncating.
+    """
     if span is None:
         return None
-    x = span.rect[2] + dx
-    y = span.rect[3] + baseline_dy
+    inline_x = span.rect[2] + PAD_X
+    wrap_x = span.rect[0]
     return {
         "target": None if protected else target,
         "label": label,
         "page": span.page,
         "anchor_rect": span.rect,
         "type": "text",
-        "place": {"mode": "point", "x": round(x, 1), "y": round(y, 1),
-                  "max_width": max_width, "fontsize": fontsize},
+        "place": {
+            "mode": "text",
+            "fontsize": fontsize,
+            "min_fontsize": min_fontsize,
+            "inline": {"x": round(inline_x, 1), "y": round(span.baseline_y, 1),
+                       "max_width": round(col_right - inline_x - PAD_R, 1)},
+            "wrap": {"x": round(wrap_x, 1), "y": round(span.baseline_y + WRAP_DY, 1),
+                     "max_width": round(col_right - wrap_x - PAD_R, 1)},
+        },
         "protected": protected,
         "confidence": "n/a" if protected else confidence,
         "note": note,
@@ -121,41 +137,43 @@ def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
     s = intro.spans
     entries: list[dict] = []
 
+    # column-right boundaries (x of the next cell) per row
     # ---- Part A: project + owner + coordinator --------------------------
-    entries.append(_txt("permit.work_description", "Project Description:",
-                        find_span(s, "Project Description:", 63), 8, -1, 460))
+    # Project description = short project NAME (shortened so it fits at top),
+    # never the long scope. col_right=455 keeps clear of the Permit App box.
+    entries.append(_txt("project_name", "Project Description:",
+                        find_span(s, "Project Description:", 63), 455))
     entries.append(_txt("property_address.__oneline__", "Address of Project:",
-                        find_span(s, "Address of Project:", 93, 36), 8, -1, 330))
+                        find_span(s, "Address of Project:", 93, 36), 455))
     entries.append(_txt("municipality.name", "Municipality:",
-                        find_span(s, "Municipality:", 93, 459), 6, -1, 95))
+                        find_span(s, "Municipality:", 93, 459), 578))
 
     entries.append(_txt("owner.company", "Owner's Company Name:",
-                        find_span(s, "Owner’s Company Name:", 300), 6, -1, 95))
+                        find_span(s, "Owner’s Company Name:", 300), 234))
     entries.append(_txt("owner.name", "First and Last Name (owner):",
-                        find_span(s, "First and Last Name:", 300, 234), 4, -1, 34))
+                        find_span(s, "First and Last Name:", 300, 234), 351))
     entries.append(_txt(None, "Signature (owner):",
-                        find_span(s, "Signature:", 300, 351), 0, 0, 0, protected=True))
+                        find_span(s, "Signature:", 300, 351), 486, protected=True))
     entries.append(_txt(None, "Date (owner):",
-                        find_span(s, "Date:", 300, 486), 0, 0, 0, protected=True))
+                        find_span(s, "Date:", 300, 486), 578, protected=True))
     entries.append(_txt("owner.address.__oneline__", "Owner's Address:",
-                        find_span(s, "Owner's Address:", 329), 6, -1, 125))
+                        find_span(s, "Owner's Address:", 329), 234))
     entries.append(_txt("owner.phone", "Telephone (owner):",
-                        find_span(s, "Telephone:", 329, 234), 4, -1, 70))
+                        find_span(s, "Telephone:", 329, 234), 351))
     entries.append(_txt("owner.email", "Email (owner):",
-                        find_span(s, "Email:", 329, 450), 4, -1, 100))
+                        find_span(s, "Email:", 329, 450), 578))
 
     entries.append(_txt("coordinator.company", "Coordinator Company:",
                         find_span(s, "Company name of the coordinator of the work of all "
-                                  "architects and professional engineers:", 359),
-                        6, -1, 72))
+                                  "architects and professional engineers:", 359), 432))
     entries.append(_txt("coordinator.name", "Coordinator Name:",
-                        find_span(s, "First and Last Name:", 359, 432), 4, -1, 66))
+                        find_span(s, "First and Last Name:", 359, 432), 578))
     entries.append(_txt("coordinator.address.__oneline__", "Coordinator Address:",
-                        find_span(s, "Address:", 389, 36), 6, -1, 155))
+                        find_span(s, "Address:", 389, 36), 234))
     entries.append(_txt("coordinator.phone", "Coordinator Telephone:",
-                        find_span(s, "Telephone:", 389, 234), 4, -1, 70))
+                        find_span(s, "Telephone:", 389, 234), 351))
     entries.append(_txt("coordinator.email", "Coordinator Email:",
-                        find_span(s, "Email:", 389, 450), 4, -1, 100))
+                        find_span(s, "Email:", 389, 450), 578))
 
     # ---- Part B: up to 4 consultant blocks ------------------------------
     company_anchors = sorted(
@@ -179,24 +197,23 @@ def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
             "protected": False, "confidence": "high", "note": "",
         })
         entries.append(_txt(f"consultants.{i}.company", f"Part B{i+1} Company Name:",
-                            comp, 6, 8, 130))
+                            comp, 234))
         entries.append(_txt(f"consultants.{i}.name", f"Part B{i+1} First and Last Name:",
-                            find_span(s, "First and Last Name:", cy, 234), 4, 8, 34))
+                            find_span(s, "First and Last Name:", cy, 234), 351))
         entries.append(_txt(None, f"Part B{i+1} Signature:",
-                            find_span(s, "Signature:", cy, 351), 0, 0, 0, protected=True))
+                            find_span(s, "Signature:", cy, 351), 486, protected=True))
         entries.append(_txt(None, f"Part B{i+1} Date:",
-                            find_span(s, "Date:", cy, 486), 0, 0, 0, protected=True))
+                            find_span(s, "Date:", cy, 486), 578, protected=True))
         entries.append(_txt(f"consultants.{i}.address.__oneline__", f"Part B{i+1} Address:",
-                            find_span(s, "Address:", cy + 29, 36), 6, 8, 155))
+                            find_span(s, "Address:", cy + 29, 36), 234))
         entries.append(_txt(f"consultants.{i}.phone", f"Part B{i+1} Telephone:",
-                            find_span(s, "Telephone:", cy + 29, 234), 4, 8, 70))
+                            find_span(s, "Telephone:", cy + 29, 234), 351))
         entries.append(_txt(f"consultants.{i}.email", f"Part B{i+1} Email:",
-                            find_span(s, "Email:", cy + 29, 450), 4, 8, 100))
+                            find_span(s, "Email:", cy + 29, 450), 578))
 
-    # permit application number, bottom of form
+    # permit application number, top-right box
     entries.append(_txt("permit.application_number", "Permit Application No.:",
-                        find_span(s, "Permit Application No.", 700), 8, -1, 120,
-                        confidence="high"))
+                        find_span(s, "Permit Application No.", 63, 485), 576))
 
     fields = [e for e in entries if e is not None]
     unmatched = [i for i, e in enumerate(entries) if e is None]

@@ -69,3 +69,31 @@ def test_empty_value_left_blank(tmp_path):
     assert any(b.reason == "no-value" for b in res.blank)
     filled_targets = {f.target for f in res.filled}
     assert "consultants.1.company" not in filled_targets
+
+
+def test_empty_address_not_filled(tmp_path):
+    intro = I.introspect(FORM)
+    mp = M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
+                                      form_title="EABO")
+    res = F.fill_overlay(mp, _profile(), tmp_path / "out.pdf")
+    # owner address is entirely empty -> must be blank, not a stray "ON"
+    owner_addr = [f for f in res.filled if f.target == "owner.address.__oneline__"]
+    assert not owner_addr
+
+
+def test_long_value_wraps_and_is_never_truncated(tmp_path):
+    p = _profile()
+    p.consultants[0].address = Address(
+        street_address="123 Wellington Street West, Suite 4000",
+        city="Toronto", province_state="ON", postal_code="M5K 1A1")
+    intro = I.introspect(FORM)
+    mp = M.build_eabo_overlay_mapping(intro, municipality="City of Oshawa",
+                                      form_title="EABO")
+    res = F.fill_overlay(mp, p, tmp_path / "out.pdf")
+
+    # nothing anywhere is truncated with an ellipsis
+    assert all("…" not in f.value for f in res.filled)
+    # the long address overflows its inline slot -> placed on the wrap line
+    addr = [f for f in res.filled if f.target == "consultants.0.address.__oneline__"][0]
+    assert addr.placement == "wrap-below"
+    assert addr.value == p.consultants[0].address.one_line()
