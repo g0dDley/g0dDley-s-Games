@@ -53,8 +53,14 @@ tracker/outreach routes it out to them to sign. Authorized signers are marked
 `signed` in the tracker automatically; the review summary flags every applied
 signature as **AUTHORISED SIGNATURE — confirm permission + date**.
 
-Signature PNGs live in `assets/signatures/` (extracted once from a signed
-copy). Treat them as sensitive.
+The date beside an authorized signature is **always today's date**, applied at
+fill time.
+
+Signature PNGs live in `assets/signatures/` and are **gitignored — local only,
+never committed** (see that folder's README). They are prepared once (cropped,
+white background made transparent, form rules removed, and normalized to a
+common ink darkness so all signatures read with similar weight). If an asset is
+missing, the block is simply reported as awaiting a signature.
 
 ## Guardrails
 

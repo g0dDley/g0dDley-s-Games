@@ -85,7 +85,8 @@ def cmd_track(a):
             # BBA in-house signatures are already applied (authorised) -> signed;
             # consultants who must sign themselves start as drafted (to send out).
             if c.signature_authorized and not rec.status == "signed":
-                rec.status, rec.date_signed = "signed", c.signature_date
+                from datetime import date
+                rec.status, rec.date_signed = "signed", date.today().isoformat()
         tr.save()
         print(f"seeded {len(tr.records)} record(s) for {fid}")
     if a.set:

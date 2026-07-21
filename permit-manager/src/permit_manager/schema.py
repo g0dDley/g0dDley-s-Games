@@ -58,7 +58,8 @@ class Contact(BaseModel):
     # by us and is routed to them to sign.
     signature_authorized: bool = False
     signature_asset: str = ""      # path (relative to project root) to a PNG
-    signature_date: str = ""       # date placed beside an authorized signature
+    signature_date: str = ""       # unused: the date beside an authorized
+                                   # signature is always today's date at fill time
 
 
 class LegalDescription(BaseModel):

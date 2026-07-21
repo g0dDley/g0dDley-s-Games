@@ -9,6 +9,7 @@ Applies a cached mapping to a project profile:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 import fitz  # PyMuPDF
@@ -67,9 +68,11 @@ def _resolve_value(profile: ProjectProfile, target: str) -> str:
 
 def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
                  *, mapping_source: str = "cached",
-                 fill_low_confidence: bool = False) -> FillResult:
+                 fill_low_confidence: bool = False,
+                 sign_date: str | None = None) -> FillResult:
     doc = fitz.open(mapping["source_pdf"])
     res = FillResult(output_pdf=str(out_path), mapping_source=mapping_source)
+    today = sign_date or date.today().isoformat()   # date beside an authorised signature
 
     for entry in mapping["fields"]:
         label = entry["label"]
@@ -82,7 +85,7 @@ def fill_overlay(mapping: dict, profile: ProjectProfile, out_path: str | Path,
             _handle_signature(page, entry, profile, res)
             continue
         if etype == "sig_date":
-            _handle_sig_date(page, entry, profile, res)
+            _handle_sig_date(page, entry, profile, res, today)
             continue
 
         if entry.get("protected"):
@@ -209,10 +212,11 @@ def _handle_signature(page, entry, profile, res):
                                   f"[authorised signature: {who.name}]", placement="signature"))
 
 
-def _handle_sig_date(page, entry, profile, res):
+def _handle_sig_date(page, entry, profile, res, today):
     label = entry["label"]
     who, routes_out = _authorized_signer(profile, entry.get("sig_target"))
-    value = who.signature_date if who else ""
+    # date beside an authorised signature is always today's date
+    value = today if who else ""
     if not value:
         res.blank.append(BlankField(label, "awaiting-signature" if routes_out else "protected",
                                     entry.get("sig_target", "")))

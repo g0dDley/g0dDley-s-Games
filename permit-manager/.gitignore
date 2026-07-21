@@ -5,3 +5,6 @@ venv/
 # generated per-project outputs (regenerable from profile + mapping)
 data/projects/*/filled/
 data/projects/*/drafts/
+# signatures are sensitive - kept LOCAL only, never committed
+assets/signatures/*
+!assets/signatures/README.md
