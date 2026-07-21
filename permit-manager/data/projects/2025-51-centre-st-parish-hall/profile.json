@@ -1,0 +1,146 @@
+{
+  "project_id": "2025-51-centre-st-parish-hall",
+  "project_name": "Parish Hall Interior Renovations",
+  "municipality": {
+    "name": "City of Oshawa",
+    "province_state": "ON",
+    "country": "CA"
+  },
+  "property_address": {
+    "street_address": "51 Centre St S",
+    "unit": "",
+    "city": "Oshawa",
+    "province_state": "ON",
+    "postal_code": "L1H 3Z9",
+    "country": "CA"
+  },
+  "legal_description": {
+    "lot": "",
+    "registered_plan": "",
+    "concession": "",
+    "part": "",
+    "roll_number": ""
+  },
+  "permit": {
+    "type": "both",
+    "purpose": [
+      "Alteration/Repair",
+      "Demolition"
+    ],
+    "work_description": "Interior renovations to parish hall: new LULA elevator lift, upgrades to lower parish (kitchen), new offices on upper parish.",
+    "current_use": "Church",
+    "proposed_use": "Church",
+    "value_estimate": "1,000,000",
+    "area_sq_m": "301",
+    "application_number": ""
+  },
+  "owner": {
+    "name": "TODO Owner signatory name",
+    "company": "TODO Parish / Diocese legal name",
+    "license_number": "",
+    "address": {
+      "street_address": "TODO",
+      "unit": "",
+      "city": "TODO",
+      "province_state": "ON",
+      "postal_code": "",
+      "country": "CA"
+    },
+    "phone": "TODO",
+    "fax": "",
+    "email": "TODO@example.com",
+    "signature_required": true
+  },
+  "applicant": {
+    "name": "Amanda Nguyen",
+    "company": "Barry Bryan Associates",
+    "license_number": "",
+    "address": {
+      "street_address": "250 Water St.",
+      "unit": "201",
+      "city": "Whitby",
+      "province_state": "ON",
+      "postal_code": "L1N 0G5",
+      "country": "CA"
+    },
+    "phone": "(905) 666-5252 ext. 253",
+    "fax": "",
+    "email": "anguyen@bba-archeng.com",
+    "signature_required": false
+  },
+  "applicant_same_as_owner": false,
+  "architect_of_record": {
+    "name": "Amanda Nguyen",
+    "company": "Barry Bryan Associates",
+    "license_number": "",
+    "address": {
+      "street_address": "250 Water St.",
+      "unit": "201",
+      "city": "Whitby",
+      "province_state": "ON",
+      "postal_code": "L1N 0G5",
+      "country": "CA"
+    },
+    "phone": "(905) 666-5252 ext. 253",
+    "fax": "",
+    "email": "anguyen@bba-archeng.com"
+  },
+  "coordinator": {
+    "name": "Amanda Nguyen",
+    "company": "Barry Bryan Associates",
+    "license_number": "",
+    "address": {
+      "street_address": "250 Water St.",
+      "unit": "201",
+      "city": "Whitby",
+      "province_state": "ON",
+      "postal_code": "L1N 0G5",
+      "country": "CA"
+    },
+    "phone": "(905) 666-5252 ext. 253",
+    "fax": "",
+    "email": "anguyen@bba-archeng.com"
+  },
+  "consultants": [
+    {
+      "name": "Amanda Nguyen",
+      "company": "Barry Bryan Associates",
+      "license_number": "",
+      "address": {
+        "street_address": "250 Water St.",
+        "unit": "201",
+        "city": "Whitby",
+        "province_state": "ON",
+        "postal_code": "L1N 0G5",
+        "country": "CA"
+      },
+      "phone": "(905) 666-5252",
+      "fax": "",
+      "email": "anguyen@bba-archeng.com",
+      "discipline": "ARCHITECTURAL",
+      "discipline_other": "",
+      "role_label": "Architect of Record",
+      "signature_required": true
+    },
+    {
+      "name": "TODO",
+      "company": "TODO Structural firm",
+      "license_number": "",
+      "address": {
+        "street_address": "TODO",
+        "unit": "",
+        "city": "TODO",
+        "province_state": "ON",
+        "postal_code": "",
+        "country": "CA"
+      },
+      "phone": "",
+      "fax": "",
+      "email": "TODO@example.com",
+      "discipline": "STRUCTURAL",
+      "discipline_other": "",
+      "role_label": "Structural Engineer",
+      "signature_required": true
+    }
+  ]
+}

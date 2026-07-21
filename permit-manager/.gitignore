@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+# generated per-project outputs (regenerable from profile + mapping)
+data/projects/*/filled/
+data/projects/*/drafts/

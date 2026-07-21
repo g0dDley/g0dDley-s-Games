@@ -1,0 +1,23 @@
+# Permit-manager settings
+
+[paths]
+mappings = "mappings"
+projects = "data/projects"
+forms    = "forms/blank"
+
+[fill]
+# Low-confidence (AI-proposed) mappings are NOT written unless explicitly
+# approved with `fill --approve-low`.
+write_low_confidence = false
+# Overlaid values are drawn in a subtle blue so filled data is visually
+# distinguishable from the pre-printed form. Set to [0,0,0] for black.
+text_color = [0.0, 0.0, 0.55]
+
+[review]
+preview_dpi = 130   # PNG preview resolution for overlay fills
+
+[gmail]
+# Drafts are written to data/projects/<id>/drafts/ as JSON only.
+# Creating the Gmail draft is a separate, explicit step via the Gmail MCP
+# tool after you approve the text. Emails are NEVER auto-sent.
+auto_send = false
