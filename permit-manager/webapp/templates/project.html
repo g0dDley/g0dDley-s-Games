@@ -52,6 +52,31 @@
   {% endif %}
 </div>
 
+<h2 id="docs">Documents &amp; Claude</h2>
+<div class="card">
+  <form method="post" action="{{ url_for('upload_document', pid=pid) }}" enctype="multipart/form-data">
+    <label class="f">Attach a project document (PDF/text) for Claude to search for missing info</label>
+    <div class="row"><input type="file" name="file" accept=".pdf,.txt,.md,.csv" required>
+      <button class="btn">Upload document</button></div>
+  </form>
+  {% if docs %}
+  <div style="margin-top:12px">{% for name in docs %}<div class="muted">📎 {{ name }}</div>{% endfor %}</div>
+  {% endif %}
+
+  <div class="row" style="margin-top:16px">
+    {% if ai_on %}
+      <form method="post" action="{{ url_for('extract', pid=pid) }}">
+        <button class="btn btn-primary" {{ 'disabled' if not docs }}>Find missing info in documents</button></form>
+      <form method="post" action="{{ url_for('research', pid=pid) }}">
+        <button class="btn">Research property online</button></form>
+      <span class="muted">{{ missing|length }} field(s) still blank · Claude proposes, you approve.</span>
+    {% else %}
+      <span class="muted">Set <code>ANTHROPIC_API_KEY</code> and restart to enable Claude:
+        read attached documents for answers, and research property facts online.</span>
+    {% endif %}
+  </div>
+</div>
+
 <h2 id="tracker">Signatures</h2>
 <div class="card" style="padding:0">
   {% if records %}

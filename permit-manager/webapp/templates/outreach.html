@@ -4,13 +4,21 @@
   <a href="{{ url_for('project', pid=pid) }}">{{ p.project_name }}</a> / Outreach{% endblock %}
 {% block body %}
 
-<h2>Draft outreach — outstanding signatures</h2>
+<h2>Draft outreach — outstanding signatures
+  {% if ai_on %}<span class="badge b-received">Claude voice</span>{% else %}<span class="badge b-drafted">templated</span>{% endif %}
+</h2>
+
 {% if drafts %}
   {% for d in drafts %}
   <div class="card">
     <div class="row" style="justify-content:space-between">
       <div><strong>To:</strong> {{ d.to or '(no email on file)' }}</div>
-      <a class="btn" href="{{ url_for('outreach_eml', pid=pid, role=d.party_role.replace(':','_',1)) }}">Download .eml</a>
+      <form method="post" action="{{ url_for('outreach_eml', pid=pid, role=d.role.replace(':','_',1)) }}">
+        <input type="hidden" name="to" value="{{ d.to }}">
+        <input type="hidden" name="subject" value="{{ d.subject }}">
+        <input type="hidden" name="body" value="{{ d.body }}">
+        <button class="btn">Download .eml</button>
+      </form>
     </div>
     <div style="margin:8px 0"><strong>Subject:</strong> {{ d.subject }}</div>
     <pre style="background:#f0f2f5;color:#1c2430;white-space:pre-wrap">{{ d.body }}</pre>
@@ -20,6 +28,20 @@
 {% else %}
   <div class="card"><div class="empty">Nothing outstanding — every signer is signed or received.</div></div>
 {% endif %}
+
+<h2>Your email voice</h2>
+<div class="card">
+  {% if ai_on %}
+  <div class="muted" style="margin-bottom:8px">Claude drafts in this voice. Describe your style, or paste an email you've sent.</div>
+  {% else %}
+  <div class="muted" style="margin-bottom:8px">Set <code>ANTHROPIC_API_KEY</code> to have Claude draft in your voice. Saved here for when you do.</div>
+  {% endif %}
+  <form method="post" action="{{ url_for('save_style') }}">
+    <input type="hidden" name="next" value="{{ url_for('outreach', pid=pid) }}">
+    <textarea name="style" rows="8" placeholder="e.g. Greeting: 'Hi <name>,'  Tone: warm but brisk. Short. Sign off 'Thanks, Audley — Barry Bryan Associates'. Never overly formal.">{{ style }}</textarea>
+    <div class="row" style="margin-top:10px"><button class="btn">Save voice</button></div>
+  </form>
+</div>
 
 <p><a href="{{ url_for('project', pid=pid) }}">← Back to application</a></p>
 {% endblock %}

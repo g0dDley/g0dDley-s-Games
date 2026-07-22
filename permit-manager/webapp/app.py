@@ -16,19 +16,36 @@ from datetime import date, datetime
 from email.message import EmailMessage
 from pathlib import Path
 
+import fitz  # PyMuPDF, for reading uploaded documents
 from flask import (Flask, abort, redirect, render_template, request,
                    send_file, url_for)
 
 ROOT = Path(__file__).resolve().parents[1]          # permit-manager/
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # for claude_helper
 
 from permit_manager import introspect as I          # noqa: E402
 from permit_manager import mapping as M              # noqa: E402
 from permit_manager import fill as F                 # noqa: E402
 from permit_manager.review import assumption_summary # noqa: E402
-from permit_manager.schema import ProjectProfile     # noqa: E402
+from permit_manager.schema import ProjectProfile, resolve_path  # noqa: E402
 from permit_manager.tracker import STATUSES, SignatureRecord, Tracker  # noqa: E402
 from permit_manager import outreach as O             # noqa: E402
+import claude_helper as ai                           # noqa: E402
+
+STYLE_PATH = ROOT / "data" / "email_style.md"       # your email voice (global)
+
+# Property facts the researcher / extractor can try to find.
+RESEARCH_FIELDS = [
+    {"target": "municipality.name", "label": "Municipality"},
+    {"target": "property_address.postal_code", "label": "Postal code"},
+    {"target": "legal_description.lot", "label": "Lot"},
+    {"target": "legal_description.registered_plan", "label": "Registered plan"},
+    {"target": "legal_description.concession", "label": "Concession"},
+    {"target": "legal_description.part", "label": "Part"},
+    {"target": "legal_description.roll_number", "label": "Assessment roll number"},
+    {"target": "permit.current_use", "label": "Current use / zoning"},
+]
 
 PROJECTS = ROOT / "data" / "projects"
 MAPPINGS = ROOT / "mappings"
@@ -155,13 +172,62 @@ def list_projects() -> list[dict]:
     return out
 
 
-def make_eml(draft: O.EmailDraft) -> bytes:
+def make_eml(to: str, subject: str, body: str) -> bytes:
     msg = EmailMessage()
-    msg["To"] = draft.to
-    msg["Subject"] = draft.subject
+    msg["To"] = to
+    msg["Subject"] = subject
     msg["X-Unsent"] = "1"
-    msg.set_content(draft.body)
+    msg.set_content(body)
     return bytes(msg)
+
+
+def style_guide() -> str:
+    return STYLE_PATH.read_text() if STYLE_PATH.exists() else ""
+
+
+def _empty(profile: ProjectProfile, target: str) -> bool:
+    v = resolve_path(profile, target)
+    return v is None or (isinstance(v, str) and not v.strip())
+
+
+def missing_fields(pid: str) -> list[dict]:
+    """Fields worth trying to fill: the last fill's blanks plus any empty
+    researchable property fields, deduped."""
+    p = load_profile(pid)
+    fid = eabo_form_id(p.municipality.name)
+    seen, out = set(), []
+    bf = project_dir(pid) / "filled" / f"{fid}.blanks.json"
+    if bf.exists():
+        for b in json.loads(bf.read_text()):
+            if b["target"] not in seen:
+                seen.add(b["target"]); out.append(b)
+    for f in RESEARCH_FIELDS:
+        if f["target"] not in seen and _empty(p, f["target"]):
+            seen.add(f["target"]); out.append(f)
+    return out
+
+
+def docs_dir(pid: str) -> Path:
+    return project_dir(pid) / "documents"
+
+
+def list_docs(pid: str) -> list[str]:
+    d = docs_dir(pid)
+    return sorted(f.name for f in d.glob("*")) if d.exists() else []
+
+
+def document_text(pid: str) -> str:
+    parts = []
+    for f in docs_dir(pid).glob("*") if docs_dir(pid).exists() else []:
+        try:
+            if f.suffix.lower() == ".pdf":
+                doc = fitz.open(f)
+                parts.append(f"### {f.name}\n" + "\n".join(pg.get_text() for pg in doc))
+            elif f.suffix.lower() in (".txt", ".md", ".csv"):
+                parts.append(f"### {f.name}\n" + f.read_text(errors="ignore"))
+        except Exception:  # noqa: BLE001 - skip unreadable files
+            continue
+    return "\n\n".join(parts)
 
 
 # --------------------------------------------------------------------------
@@ -208,6 +274,7 @@ def project(pid: str):
         statuses=STATUSES,
         signed_files=[f.name for f in signed],
         profile_json=json.dumps(p.model_dump(), indent=2),
+        ai_on=ai.available(), docs=list_docs(pid), missing=missing_fields(pid),
     )
 
 
@@ -309,25 +376,98 @@ def signed_file(pid: str, name: str):
     return send_file(f, mimetype="application/pdf", download_name=Path(name).name)
 
 
+# ---- Claude smarts (active only when ANTHROPIC_API_KEY is set) -----------
+@app.post("/projects/<pid>/documents")
+def upload_document(pid: str):
+    file = request.files.get("file")
+    if file and file.filename:
+        docs_dir(pid).mkdir(exist_ok=True)
+        file.save(docs_dir(pid) / Path(file.filename).name)
+    return redirect(url_for("project", pid=pid) + "#docs")
+
+
+@app.post("/projects/<pid>/extract")
+def extract(pid: str):
+    if not ai.available():
+        return "Set ANTHROPIC_API_KEY to enable Claude features.", 400
+    p = load_profile(pid)
+    text = document_text(pid)
+    if not text.strip():
+        return redirect(url_for("project", pid=pid) + "#docs")
+    ctx = f"{p.project_name} — {p.property_address.one_line()} — {p.municipality.name}"
+    try:
+        sugg = ai.extract_fields(text, missing_fields(pid), ctx)
+    except Exception as e:  # noqa: BLE001
+        return f"Claude extraction failed: {e}", 502
+    return render_template("suggestions.html", pid=pid, p=p, suggestions=sugg,
+                           source="uploaded documents")
+
+
+@app.post("/projects/<pid>/research")
+def research(pid: str):
+    if not ai.available():
+        return "Set ANTHROPIC_API_KEY to enable Claude features.", 400
+    p = load_profile(pid)
+    fields = [f for f in RESEARCH_FIELDS if _empty(p, f["target"])]
+    try:
+        sugg = ai.research_property(p.property_address.one_line(),
+                                    p.municipality.name, fields)
+    except Exception as e:  # noqa: BLE001
+        return f"Claude research failed: {e}", 502
+    return render_template("suggestions.html", pid=pid, p=p, suggestions=sugg,
+                           source="online research")
+
+
+@app.post("/projects/<pid>/apply-suggestions")
+def apply_suggestions(pid: str):
+    d = load_profile(pid).model_dump()
+    for target in request.form.getlist("accept"):
+        val = request.form.get(f"value:{target}", "").strip()
+        if val:
+            set_path(d, target, val)
+    ProjectProfile.model_validate(d).save(project_dir(pid) / "profile.json")
+    return redirect(url_for("project", pid=pid))
+
+
+@app.post("/style")
+def save_style():
+    STYLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    STYLE_PATH.write_text(request.form.get("style", ""))
+    return redirect(request.form.get("next", url_for("dashboard")))
+
+
 @app.route("/projects/<pid>/outreach")
 def outreach(pid: str):
     p = load_profile(pid)
     tr = tracker_for(pid)
-    drafts = O.draft_all_outstanding(tr, p, project_dir(pid) / "drafts")
-    return render_template("outreach.html", pid=pid, p=p, drafts=drafts)
+    drafts = []
+    for rec in tr.outstanding():
+        if ai.available():
+            try:
+                d = ai.draft_email(
+                    recipient_name=rec.recipient_name, recipient_role=rec.party_role,
+                    project=p.project_name, site=p.property_address.one_line(),
+                    municipality=p.municipality.name, form_title=rec.form_title,
+                    chased=(rec.status == "sent"), style_guide=style_guide(),
+                    sender=(p.applicant.name + ", " + p.applicant.company).strip(", "))
+                drafts.append({"to": rec.recipient_email, "subject": d["subject"],
+                               "body": d["body"], "role": rec.party_role})
+                continue
+            except Exception:  # noqa: BLE001 - fall back to deterministic
+                pass
+        det = O.draft_for(rec, p)
+        drafts.append({"to": det.to, "subject": det.subject, "body": det.body,
+                       "role": rec.party_role})
+    return render_template("outreach.html", pid=pid, p=p, drafts=drafts,
+                           ai_on=ai.available(), style=style_guide())
 
 
-@app.route("/projects/<pid>/outreach/<role>.eml")
+@app.route("/projects/<pid>/outreach/<role>.eml", methods=["POST"])
 def outreach_eml(pid: str, role: str):
-    p = load_profile(pid)
-    role = role.replace("_", ":", 1) if role.startswith("consultant_") else role
-    for rec in tracker_for(pid).outstanding():
-        if rec.party_role == role:
-            data = make_eml(O.draft_for(rec, p))
-            return send_file(io.BytesIO(data), mimetype="message/rfc822",
-                             as_attachment=True,
-                             download_name=f"{pid}-{role.replace(':', '_')}.eml")
-    abort(404)
+    data = make_eml(request.form.get("to", ""), request.form.get("subject", ""),
+                    request.form.get("body", ""))
+    return send_file(io.BytesIO(data), mimetype="message/rfc822", as_attachment=True,
+                     download_name=f"{pid}-{role.replace(':', '_')}.eml")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Suggestions · {{ p.project_name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('dashboard') }}">Applications</a> /
+  <a href="{{ url_for('project', pid=pid) }}">{{ p.project_name }}</a> / Review{% endblock %}
+{% block body %}
+
+<h2>Claude found these in {{ source }} — you decide</h2>
+{% if suggestions %}
+<form method="post" action="{{ url_for('apply_suggestions', pid=pid) }}">
+  <div class="card" style="padding:0">
+    <table>
+      <tr><th>Use</th><th>Field</th><th>Value</th><th>Confidence</th><th>Evidence</th></tr>
+      {% for s in suggestions %}
+      <tr>
+        <td><input type="checkbox" name="accept" value="{{ s.target }}" {{ 'checked' if s.confidence=='high' }}></td>
+        <td>{{ s.label }}<div class="muted" style="font-size:12px">{{ s.target }}</div></td>
+        <td><input type="text" name="value:{{ s.target }}" value="{{ s.value }}" style="min-width:180px"></td>
+        <td><span class="badge {{ 'b-received' if s.confidence=='high' else 'b-sent' }}">{{ s.confidence }}</span></td>
+        <td class="muted" style="font-size:13px">{{ s.evidence }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn btn-primary">Apply checked values</button>
+    <a class="btn" href="{{ url_for('project', pid=pid) }}">Cancel</a>
+  </div>
+  <p class="muted">Nothing is written to the form until you apply it — then re-fill to see it placed. Low-confidence items are unchecked by default.</p>
+</form>
+{% else %}
+<div class="card"><div class="empty">Claude didn't find anything it could support with evidence.
+  Nothing was guessed. Try attaching a more complete document, or enter the values by hand.</div></div>
+<p><a href="{{ url_for('project', pid=pid) }}">← Back to application</a></p>
+{% endif %}
+{% endblock %}

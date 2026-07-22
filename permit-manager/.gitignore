@@ -5,6 +5,10 @@ venv/
 # generated per-project outputs (regenerable from profile + mapping)
 data/projects/*/filled/
 data/projects/*/drafts/
+# private uploads - never commit
+data/projects/*/documents/
+data/projects/*/signed/
+data/email_style.md
 # signatures are sensitive - kept LOCAL only, never committed
 assets/signatures/*
 !assets/signatures/README.md
