@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block crumb %}All applications{% endblock %}
+{% block body %}
+
+<h2>Applications</h2>
+<div class="card" style="padding:0">
+  {% if projects %}
+  <table>
+    <tr><th>Project</th><th>Municipality</th><th>Owner Commitment</th><th>Signatures</th><th>Updated</th></tr>
+    {% for p in projects %}
+    <tr>
+      <td><a href="{{ url_for('project', pid=p.id) }}"><strong>{{ p.name }}</strong></a>
+        {% if p.address %}<div class="muted" style="font-size:13px">{{ p.address }}</div>{% endif %}</td>
+      <td>{{ p.municipality or '—' }}</td>
+      <td><span class="badge b-{{ p.status.label|replace(' ','-') }}">{{ p.status.label }}</span></td>
+      <td class="muted">{% if p.status.total %}{{ p.status.signed }}/{{ p.status.total }} signed{% else %}—{% endif %}</td>
+      <td class="muted">{{ p.updated }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">No applications yet. Create one below to get started.</div>
+  {% endif %}
+</div>
+
+<h2>New application</h2>
+<div class="card">
+  <form method="post" action="{{ url_for('create_project') }}">
+    <div class="grid2">
+      <div><label class="f">Project name</label>
+        <input type="text" name="name" placeholder="e.g. Parish Hall Renovations" required></div>
+      <div><label class="f">Municipality</label>
+        <input type="text" name="municipality" placeholder="e.g. City of Oshawa"></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn btn-primary">Create application</button></div>
+  </form>
+</div>
+
+{% endblock %}

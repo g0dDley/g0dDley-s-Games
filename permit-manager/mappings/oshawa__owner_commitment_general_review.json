@@ -1,0 +1,1525 @@
+{
+  "form_id": "oshawa__owner_commitment_general_review",
+  "municipality": "Oshawa",
+  "form_title": "Owner Commitment to Have General Review Undertaken",
+  "source_pdf": "/home/user/g0dDley-s-Games/permit-manager/forms/blank/ontario_eabo/owner_commitment_general_review.pdf",
+  "pdf_sha256": "ca2e329de94e02b6cc34bee981ace5e4289937044a69963775cb6be8bcd64c39",
+  "created": "2026-07-22",
+  "mapping_version": 1,
+  "fill_strategy": "overlay",
+  "page_size": [
+    612.0,
+    792.0
+  ],
+  "fields": [
+    {
+      "target": "project_name",
+      "label": "Project Description:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        62.6,
+        116.6,
+        72.6
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 120.6,
+          "y": 70.7,
+          "max_width": 330.4
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 82.7,
+          "max_width": 415.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "property_address.__streetline__",
+      "label": "Address of Project:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        92.8,
+        114.6,
+        102.8
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 118.6,
+          "y": 100.9,
+          "max_width": 332.4
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 112.9,
+          "max_width": 415.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "municipality.name",
+      "label": "Municipality:",
+      "page": 0,
+      "anchor_rect": [
+        459.1,
+        92.8,
+        508.5,
+        102.8
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 512.5,
+          "y": 100.9,
+          "max_width": 61.5
+        },
+        "wrap": {
+          "x": 459.1,
+          "y": 112.9,
+          "max_width": 114.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "owner.company",
+      "label": "Owner's Company Name:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        300.1,
+        129.8,
+        309.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 133.8,
+          "y": 307.4,
+          "max_width": 96.2
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 319.4,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "owner.name",
+      "label": "First and Last Name (owner):",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        300.1,
+        310.6,
+        309.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 314.6,
+          "y": 307.4,
+          "max_width": 32.4
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 319.4,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": null,
+      "label": "Signature (owner):",
+      "type": "signature",
+      "page": 0,
+      "anchor_rect": [
+        351.1,
+        300.1,
+        389.8,
+        309.1
+      ],
+      "protected": true,
+      "confidence": "n/a",
+      "sig_target": "owner",
+      "sig_box": [
+        392.8,
+        295.4,
+        482.1,
+        317.4
+      ]
+    },
+    {
+      "target": "owner.signature_date",
+      "label": "Date (owner):",
+      "page": 0,
+      "anchor_rect": [
+        486.1,
+        300.1,
+        507.4,
+        309.1
+      ],
+      "type": "sig_date",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 511.4,
+          "y": 307.4,
+          "max_width": 62.6
+        },
+        "wrap": {
+          "x": 486.1,
+          "y": 319.4,
+          "max_width": 87.9
+        }
+      },
+      "protected": true,
+      "confidence": "n/a",
+      "note": "",
+      "sig_target": "owner"
+    },
+    {
+      "target": "owner.address.__oneline__",
+      "label": "Owner's Address:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        329.3,
+        101.1,
+        338.2
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 105.1,
+          "y": 336.5,
+          "max_width": 124.9
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 348.5,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "owner.phone",
+      "label": "Telephone (owner):",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        329.3,
+        276.4,
+        338.2
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 280.4,
+          "y": 336.5,
+          "max_width": 66.6
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 348.5,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "owner.email",
+      "label": "Email (owner):",
+      "page": 0,
+      "anchor_rect": [
+        450.1,
+        329.3,
+        474.5,
+        338.2
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 478.5,
+          "y": 336.5,
+          "max_width": 95.5
+        },
+        "wrap": {
+          "x": 450.1,
+          "y": 348.5,
+          "max_width": 123.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "coordinator.company",
+      "label": "Coordinator Company:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        359.4,
+        356.7,
+        368.3
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 360.7,
+          "y": 366.6,
+          "max_width": 67.3
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 378.6,
+          "max_width": 392.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "coordinator.name",
+      "label": "Coordinator Name:",
+      "page": 0,
+      "anchor_rect": [
+        432.1,
+        359.4,
+        508.6,
+        368.3
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 512.6,
+          "y": 366.6,
+          "max_width": 61.4
+        },
+        "wrap": {
+          "x": 432.1,
+          "y": 378.6,
+          "max_width": 141.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "coordinator.address.__oneline__",
+      "label": "Coordinator Address:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        388.5,
+        69.8,
+        397.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 73.8,
+          "y": 395.8,
+          "max_width": 156.2
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 407.8,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "coordinator.phone",
+      "label": "Coordinator Telephone:",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        388.5,
+        276.4,
+        397.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 280.4,
+          "y": 395.8,
+          "max_width": 66.6
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 407.8,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "coordinator.email",
+      "label": "Coordinator Email:",
+      "page": 0,
+      "anchor_rect": [
+        450.1,
+        388.5,
+        474.5,
+        397.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 478.5,
+          "y": 395.8,
+          "max_width": 95.5
+        },
+        "wrap": {
+          "x": 450.1,
+          "y": 407.8,
+          "max_width": 123.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.0.discipline",
+      "label": "Part B block 1 - discipline",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        480.0,
+        98.3,
+        489.0
+      ],
+      "type": "checkbox_group",
+      "options": {
+        "ARCHITECTURAL": [
+          36,
+          468.0,
+          45,
+          477.0
+        ],
+        "STRUCTURAL": [
+          124,
+          468.0,
+          133,
+          477.0
+        ],
+        "MECHANICAL": [
+          198,
+          468.0,
+          207,
+          477.0
+        ],
+        "ELECTRICAL": [
+          272,
+          468.0,
+          281,
+          477.0
+        ],
+        "SITE SERVICES": [
+          342,
+          468.0,
+          351,
+          477.0
+        ],
+        "OTHER": [
+          423,
+          468.0,
+          432,
+          477.0
+        ]
+      },
+      "place": {
+        "mode": "mark",
+        "fontsize": 9.0
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.0.company",
+      "label": "Part B1 Company Name:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        480.0,
+        98.3,
+        489.0
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 102.3,
+          "y": 487.3,
+          "max_width": 127.7
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 499.3,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.0.name",
+      "label": "Part B1 First and Last Name:",
+      "page": 0,
+      "anchor_rect": [
+        234.0,
+        480.0,
+        310.6,
+        489.0
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 314.6,
+          "y": 487.3,
+          "max_width": 32.4
+        },
+        "wrap": {
+          "x": 234.0,
+          "y": 499.3,
+          "max_width": 113.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": null,
+      "label": "Part B1 Signature:",
+      "type": "signature",
+      "page": 0,
+      "anchor_rect": [
+        351.1,
+        480.0,
+        387.6,
+        489.0
+      ],
+      "protected": true,
+      "confidence": "n/a",
+      "sig_target": "consultants.0",
+      "sig_box": [
+        390.6,
+        475.3,
+        482.1,
+        497.3
+      ]
+    },
+    {
+      "target": "consultants.0.signature_date",
+      "label": "Part B1 Date:",
+      "page": 0,
+      "anchor_rect": [
+        486.1,
+        480.0,
+        507.4,
+        489.0
+      ],
+      "type": "sig_date",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 511.4,
+          "y": 487.3,
+          "max_width": 62.6
+        },
+        "wrap": {
+          "x": 486.1,
+          "y": 499.3,
+          "max_width": 87.9
+        }
+      },
+      "protected": true,
+      "confidence": "n/a",
+      "note": "",
+      "sig_target": "consultants.0"
+    },
+    {
+      "target": "consultants.0.address.__oneline__",
+      "label": "Part B1 Address:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        509.2,
+        69.8,
+        518.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 73.8,
+          "y": 516.4,
+          "max_width": 156.2
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 528.4,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.0.phone",
+      "label": "Part B1 Telephone:",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        509.2,
+        276.4,
+        518.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 280.4,
+          "y": 516.4,
+          "max_width": 66.6
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 528.4,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.0.email",
+      "label": "Part B1 Email:",
+      "page": 0,
+      "anchor_rect": [
+        450.1,
+        509.2,
+        474.5,
+        518.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 478.5,
+          "y": 516.4,
+          "max_width": 95.5
+        },
+        "wrap": {
+          "x": 450.1,
+          "y": 528.4,
+          "max_width": 123.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.1.discipline",
+      "label": "Part B block 2 - discipline",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        551.5,
+        98.3,
+        560.5
+      ],
+      "type": "checkbox_group",
+      "options": {
+        "ARCHITECTURAL": [
+          36,
+          539.5,
+          45,
+          548.5
+        ],
+        "STRUCTURAL": [
+          124,
+          539.5,
+          133,
+          548.5
+        ],
+        "MECHANICAL": [
+          198,
+          539.5,
+          207,
+          548.5
+        ],
+        "ELECTRICAL": [
+          272,
+          539.5,
+          281,
+          548.5
+        ],
+        "SITE SERVICES": [
+          342,
+          539.5,
+          351,
+          548.5
+        ],
+        "OTHER": [
+          423,
+          539.5,
+          432,
+          548.5
+        ]
+      },
+      "place": {
+        "mode": "mark",
+        "fontsize": 9.0
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.1.company",
+      "label": "Part B2 Company Name:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        551.5,
+        98.3,
+        560.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 102.3,
+          "y": 558.8,
+          "max_width": 127.7
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 570.8,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.1.name",
+      "label": "Part B2 First and Last Name:",
+      "page": 0,
+      "anchor_rect": [
+        234.0,
+        551.5,
+        310.6,
+        560.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 314.6,
+          "y": 558.8,
+          "max_width": 32.4
+        },
+        "wrap": {
+          "x": 234.0,
+          "y": 570.8,
+          "max_width": 113.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": null,
+      "label": "Part B2 Signature:",
+      "type": "signature",
+      "page": 0,
+      "anchor_rect": [
+        351.1,
+        551.5,
+        387.6,
+        560.5
+      ],
+      "protected": true,
+      "confidence": "n/a",
+      "sig_target": "consultants.1",
+      "sig_box": [
+        390.6,
+        546.8,
+        482.1,
+        568.8
+      ]
+    },
+    {
+      "target": "consultants.1.signature_date",
+      "label": "Part B2 Date:",
+      "page": 0,
+      "anchor_rect": [
+        486.1,
+        551.5,
+        507.4,
+        560.5
+      ],
+      "type": "sig_date",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 511.4,
+          "y": 558.8,
+          "max_width": 62.6
+        },
+        "wrap": {
+          "x": 486.1,
+          "y": 570.8,
+          "max_width": 87.9
+        }
+      },
+      "protected": true,
+      "confidence": "n/a",
+      "note": "",
+      "sig_target": "consultants.1"
+    },
+    {
+      "target": "consultants.1.address.__oneline__",
+      "label": "Part B2 Address:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        580.7,
+        69.8,
+        589.6
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 73.8,
+          "y": 588.0,
+          "max_width": 156.2
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 600.0,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.1.phone",
+      "label": "Part B2 Telephone:",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        580.7,
+        276.4,
+        589.6
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 280.4,
+          "y": 588.0,
+          "max_width": 66.6
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 600.0,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.1.email",
+      "label": "Part B2 Email:",
+      "page": 0,
+      "anchor_rect": [
+        450.1,
+        580.7,
+        474.5,
+        589.6
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 478.5,
+          "y": 588.0,
+          "max_width": 95.5
+        },
+        "wrap": {
+          "x": 450.1,
+          "y": 600.0,
+          "max_width": 123.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.2.discipline",
+      "label": "Part B block 3 - discipline",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        622.9,
+        98.3,
+        631.9
+      ],
+      "type": "checkbox_group",
+      "options": {
+        "ARCHITECTURAL": [
+          36,
+          610.9,
+          45,
+          619.9
+        ],
+        "STRUCTURAL": [
+          124,
+          610.9,
+          133,
+          619.9
+        ],
+        "MECHANICAL": [
+          198,
+          610.9,
+          207,
+          619.9
+        ],
+        "ELECTRICAL": [
+          272,
+          610.9,
+          281,
+          619.9
+        ],
+        "SITE SERVICES": [
+          342,
+          610.9,
+          351,
+          619.9
+        ],
+        "OTHER": [
+          423,
+          610.9,
+          432,
+          619.9
+        ]
+      },
+      "place": {
+        "mode": "mark",
+        "fontsize": 9.0
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.2.company",
+      "label": "Part B3 Company Name:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        622.9,
+        98.3,
+        631.9
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 102.3,
+          "y": 630.2,
+          "max_width": 127.7
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 642.2,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.2.name",
+      "label": "Part B3 First and Last Name:",
+      "page": 0,
+      "anchor_rect": [
+        234.0,
+        622.9,
+        310.6,
+        631.9
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 314.6,
+          "y": 630.2,
+          "max_width": 32.4
+        },
+        "wrap": {
+          "x": 234.0,
+          "y": 642.2,
+          "max_width": 113.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": null,
+      "label": "Part B3 Signature:",
+      "type": "signature",
+      "page": 0,
+      "anchor_rect": [
+        351.1,
+        622.9,
+        387.6,
+        631.9
+      ],
+      "protected": true,
+      "confidence": "n/a",
+      "sig_target": "consultants.2",
+      "sig_box": [
+        390.6,
+        618.2,
+        482.1,
+        640.2
+      ]
+    },
+    {
+      "target": "consultants.2.signature_date",
+      "label": "Part B3 Date:",
+      "page": 0,
+      "anchor_rect": [
+        486.1,
+        622.9,
+        507.4,
+        631.9
+      ],
+      "type": "sig_date",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 511.4,
+          "y": 630.2,
+          "max_width": 62.6
+        },
+        "wrap": {
+          "x": 486.1,
+          "y": 642.2,
+          "max_width": 87.9
+        }
+      },
+      "protected": true,
+      "confidence": "n/a",
+      "note": "",
+      "sig_target": "consultants.2"
+    },
+    {
+      "target": "consultants.2.address.__oneline__",
+      "label": "Part B3 Address:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        652.1,
+        69.8,
+        661.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 73.8,
+          "y": 659.4,
+          "max_width": 156.2
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 671.4,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.2.phone",
+      "label": "Part B3 Telephone:",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        652.1,
+        276.4,
+        661.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 280.4,
+          "y": 659.4,
+          "max_width": 66.6
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 671.4,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.2.email",
+      "label": "Part B3 Email:",
+      "page": 0,
+      "anchor_rect": [
+        450.1,
+        652.1,
+        474.5,
+        661.1
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 478.5,
+          "y": 659.4,
+          "max_width": 95.5
+        },
+        "wrap": {
+          "x": 450.1,
+          "y": 671.4,
+          "max_width": 123.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.3.discipline",
+      "label": "Part B block 4 - discipline",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        694.3,
+        98.3,
+        703.3
+      ],
+      "type": "checkbox_group",
+      "options": {
+        "ARCHITECTURAL": [
+          36,
+          682.3,
+          45,
+          691.3
+        ],
+        "STRUCTURAL": [
+          124,
+          682.3,
+          133,
+          691.3
+        ],
+        "MECHANICAL": [
+          198,
+          682.3,
+          207,
+          691.3
+        ],
+        "ELECTRICAL": [
+          272,
+          682.3,
+          281,
+          691.3
+        ],
+        "SITE SERVICES": [
+          342,
+          682.3,
+          351,
+          691.3
+        ],
+        "OTHER": [
+          423,
+          682.3,
+          432,
+          691.3
+        ]
+      },
+      "place": {
+        "mode": "mark",
+        "fontsize": 9.0
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.3.company",
+      "label": "Part B4 Company Name:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        694.3,
+        98.3,
+        703.3
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 102.3,
+          "y": 701.6,
+          "max_width": 127.7
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 713.6,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.3.name",
+      "label": "Part B4 First and Last Name:",
+      "page": 0,
+      "anchor_rect": [
+        234.0,
+        694.3,
+        310.6,
+        703.3
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 314.6,
+          "y": 701.6,
+          "max_width": 32.4
+        },
+        "wrap": {
+          "x": 234.0,
+          "y": 713.6,
+          "max_width": 113.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": null,
+      "label": "Part B4 Signature:",
+      "type": "signature",
+      "page": 0,
+      "anchor_rect": [
+        351.1,
+        694.3,
+        387.6,
+        703.3
+      ],
+      "protected": true,
+      "confidence": "n/a",
+      "sig_target": "consultants.3",
+      "sig_box": [
+        390.6,
+        689.6,
+        482.1,
+        711.6
+      ]
+    },
+    {
+      "target": "consultants.3.signature_date",
+      "label": "Part B4 Date:",
+      "page": 0,
+      "anchor_rect": [
+        486.1,
+        694.3,
+        507.4,
+        703.3
+      ],
+      "type": "sig_date",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 511.4,
+          "y": 701.6,
+          "max_width": 62.6
+        },
+        "wrap": {
+          "x": 486.1,
+          "y": 713.6,
+          "max_width": 87.9
+        }
+      },
+      "protected": true,
+      "confidence": "n/a",
+      "note": "",
+      "sig_target": "consultants.3"
+    },
+    {
+      "target": "consultants.3.address.__oneline__",
+      "label": "Part B4 Address:",
+      "page": 0,
+      "anchor_rect": [
+        36.0,
+        723.5,
+        69.8,
+        732.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 73.8,
+          "y": 730.8,
+          "max_width": 156.2
+        },
+        "wrap": {
+          "x": 36.0,
+          "y": 742.8,
+          "max_width": 194.0
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.3.phone",
+      "label": "Part B4 Telephone:",
+      "page": 0,
+      "anchor_rect": [
+        234.1,
+        723.5,
+        276.4,
+        732.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 280.4,
+          "y": 730.8,
+          "max_width": 66.6
+        },
+        "wrap": {
+          "x": 234.1,
+          "y": 742.8,
+          "max_width": 112.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "consultants.3.email",
+      "label": "Part B4 Email:",
+      "page": 0,
+      "anchor_rect": [
+        450.1,
+        723.5,
+        474.5,
+        732.5
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 478.5,
+          "y": 730.8,
+          "max_width": 95.5
+        },
+        "wrap": {
+          "x": 450.1,
+          "y": 742.8,
+          "max_width": 123.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    },
+    {
+      "target": "permit.application_number",
+      "label": "Permit Application No.:",
+      "page": 0,
+      "anchor_rect": [
+        485.1,
+        56.0,
+        551.9,
+        65.2
+      ],
+      "type": "text",
+      "place": {
+        "mode": "text",
+        "fontsize": 8.0,
+        "min_fontsize": 5.5,
+        "inline": {
+          "x": 555.9,
+          "y": 63.5,
+          "max_width": 16.1
+        },
+        "wrap": {
+          "x": 485.1,
+          "y": 75.5,
+          "max_width": 86.9
+        }
+      },
+      "protected": false,
+      "confidence": "high",
+      "note": ""
+    }
+  ],
+  "unmapped_fields": []
+}

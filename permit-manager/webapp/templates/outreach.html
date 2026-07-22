@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Outreach · {{ p.project_name }}{% endblock %}
+{% block crumb %}<a href="{{ url_for('dashboard') }}">Applications</a> /
+  <a href="{{ url_for('project', pid=pid) }}">{{ p.project_name }}</a> / Outreach{% endblock %}
+{% block body %}
+
+<h2>Draft outreach — outstanding signatures</h2>
+{% if drafts %}
+  {% for d in drafts %}
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div><strong>To:</strong> {{ d.to or '(no email on file)' }}</div>
+      <a class="btn" href="{{ url_for('outreach_eml', pid=pid, role=d.party_role.replace(':','_',1)) }}">Download .eml</a>
+    </div>
+    <div style="margin:8px 0"><strong>Subject:</strong> {{ d.subject }}</div>
+    <pre style="background:#f0f2f5;color:#1c2430;white-space:pre-wrap">{{ d.body }}</pre>
+  </div>
+  {% endfor %}
+  <p class="muted">Drafts only — open the .eml in Outlook, attach the signed form, review, and send.</p>
+{% else %}
+  <div class="card"><div class="empty">Nothing outstanding — every signer is signed or received.</div></div>
+{% endif %}
+
+<p><a href="{{ url_for('project', pid=pid) }}">← Back to application</a></p>
+{% endblock %}

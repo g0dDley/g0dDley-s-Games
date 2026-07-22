@@ -1,0 +1,334 @@
+"""Permit Desk - a minimal local dashboard over the permit-manager engine.
+
+Run:  pip install -r ../requirements.txt && python app.py   (then open http://localhost:5000)
+
+Tracks multiple permit applications, fills the EABO Owner Commitment form,
+shows per-form / per-signer status, and lets you upload signed copies and
+re-fill as new information arrives. No API key required.
+"""
+from __future__ import annotations
+
+import io
+import json
+import re
+import sys
+from datetime import date, datetime
+from email.message import EmailMessage
+from pathlib import Path
+
+from flask import (Flask, abort, redirect, render_template, request,
+                   send_file, url_for)
+
+ROOT = Path(__file__).resolve().parents[1]          # permit-manager/
+sys.path.insert(0, str(ROOT / "src"))
+
+from permit_manager import introspect as I          # noqa: E402
+from permit_manager import mapping as M              # noqa: E402
+from permit_manager import fill as F                 # noqa: E402
+from permit_manager.review import assumption_summary # noqa: E402
+from permit_manager.schema import ProjectProfile     # noqa: E402
+from permit_manager.tracker import STATUSES, SignatureRecord, Tracker  # noqa: E402
+from permit_manager import outreach as O             # noqa: E402
+
+PROJECTS = ROOT / "data" / "projects"
+MAPPINGS = ROOT / "mappings"
+EABO_BLANK = ROOT / "forms/blank/ontario_eabo/owner_commitment_general_review.pdf"
+EABO_SLUG = "owner_commitment_general_review"
+EABO_TITLE = "Owner Commitment to Have General Review Undertaken"
+
+app = Flask(__name__)
+
+
+# --------------------------------------------------------------------------
+# helpers
+# --------------------------------------------------------------------------
+def slugify(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-") or "project"
+
+
+def project_dir(pid: str) -> Path:
+    d = PROJECTS / pid
+    if not (d / "profile.json").exists():
+        abort(404)
+    return d
+
+
+def load_profile(pid: str) -> ProjectProfile:
+    return ProjectProfile.load(project_dir(pid) / "profile.json")
+
+
+def tracker_for(pid: str) -> Tracker:
+    return Tracker(project_dir(pid) / "tracker.json")
+
+
+def eabo_form_id(muni: str) -> str:
+    return M.form_id(M._slug(muni or "ontario"), EABO_SLUG)
+
+
+def ensure_mapping(muni: str) -> dict:
+    """Build (or reuse) the overlay mapping for this municipality's EABO form."""
+    fid = eabo_form_id(muni)
+    path = M.cache_path(MAPPINGS, fid)
+    intro = I.introspect(EABO_BLANK)
+    if not path.exists() or M.is_stale(M.load_mapping(path), intro):
+        mp = M.build_eabo_overlay_mapping(intro, municipality=muni or "Ontario",
+                                          form_title=EABO_TITLE)
+        M.save_mapping(path, mp)
+    return M.load_mapping(path)
+
+
+def set_path(d: dict, dotted: str, value):
+    """Set a nested value by dotted path (creating dicts / list slots)."""
+    parts = dotted.split(".")
+    node = d
+    for i, p in enumerate(parts[:-1]):
+        nxt_is_idx = parts[i + 1].isdigit()
+        if p.isdigit():
+            idx = int(p)
+            while len(node) <= idx:
+                node.append({})
+            node = node[idx]
+        else:
+            if not isinstance(node.get(p), (dict, list)):
+                node[p] = [] if nxt_is_idx else {}
+            node = node[p]
+    last = parts[-1]
+    if last.isdigit():
+        idx = int(last)
+        while len(node) <= idx:
+            node.append(None)
+        node[idx] = value
+    else:
+        node[last] = value
+
+
+def seed_tracker(pid: str, profile: ProjectProfile, fid: str) -> None:
+    tr = tracker_for(pid)
+    if profile.owner.signature_required and profile.owner.name:
+        tr.upsert(SignatureRecord(fid, EABO_TITLE, "owner",
+                                  profile.owner.name, profile.owner.email))
+    for c in profile.consultants:
+        role = f"consultant:{c.discipline.lower().replace(' ', '_')}"
+        tr.upsert(SignatureRecord(fid, EABO_TITLE, role, c.name, c.email))
+    tr.save()
+
+
+def form_status(pid: str, fid: str) -> dict:
+    """Aggregate a form's signer records into a headline status."""
+    recs = [r for r in tracker_for(pid).records if r.form_id == fid]
+    signed = sum(1 for r in recs if r.status in ("signed", "received"))
+    total = len(recs)
+    filled = (project_dir(pid) / "filled" / f"{fid}.pdf").exists()
+    if total and signed == total:
+        label = "complete"
+    elif signed:
+        label = "partially signed"
+    elif filled:
+        label = "filled"
+    else:
+        label = "not started"
+    return {"label": label, "signed": signed, "total": total, "filled": filled}
+
+
+def project_summary(pid: str) -> dict:
+    p = load_profile(pid)
+    fid = eabo_form_id(p.municipality.name)
+    st = form_status(pid, fid)
+    mtime = max((f.stat().st_mtime for f in project_dir(pid).rglob("*") if f.is_file()),
+                default=0)
+    return {
+        "id": pid, "name": p.project_name or pid,
+        "municipality": p.municipality.name,
+        "address": p.property_address.one_line(),
+        "status": st,
+        "updated": datetime.fromtimestamp(mtime).strftime("%Y-%m-%d %H:%M") if mtime else "",
+    }
+
+
+def list_projects() -> list[dict]:
+    if not PROJECTS.exists():
+        return []
+    out = []
+    for d in sorted(PROJECTS.iterdir()):
+        if (d / "profile.json").exists():
+            out.append(project_summary(d.name))
+    return out
+
+
+def make_eml(draft: O.EmailDraft) -> bytes:
+    msg = EmailMessage()
+    msg["To"] = draft.to
+    msg["Subject"] = draft.subject
+    msg["X-Unsent"] = "1"
+    msg.set_content(draft.body)
+    return bytes(msg)
+
+
+# --------------------------------------------------------------------------
+# routes
+# --------------------------------------------------------------------------
+@app.route("/")
+def dashboard():
+    return render_template("dashboard.html", projects=list_projects())
+
+
+@app.post("/projects")
+def create_project():
+    name = request.form.get("name", "").strip()
+    muni = request.form.get("municipality", "").strip()
+    if not name:
+        return redirect(url_for("dashboard"))
+    pid = f"{date.today():%Y}-{slugify(name)}"
+    d = PROJECTS / pid
+    d.mkdir(parents=True, exist_ok=True)
+    if not (d / "profile.json").exists():
+        ProjectProfile(project_id=pid, project_name=name,
+                       municipality={"name": muni}).save(d / "profile.json")
+    return redirect(url_for("project", pid=pid))
+
+
+@app.route("/projects/<pid>")
+def project(pid: str):
+    p = load_profile(pid)
+    fid = eabo_form_id(p.municipality.name)
+    fdir = project_dir(pid) / "filled"
+    summary = (fdir / f"{fid}.summary.txt")
+    blanks_file = fdir / f"{fid}.blanks.json"
+    blanks = json.loads(blanks_file.read_text()) if blanks_file.exists() else []
+    signed = sorted((project_dir(pid) / "signed").glob("*.pdf")) \
+        if (project_dir(pid) / "signed").exists() else []
+    return render_template(
+        "project.html", p=p, pid=pid, fid=fid,
+        status=form_status(pid, fid),
+        has_filled=(fdir / f"{fid}.pdf").exists(),
+        has_preview=(fdir / f"{fid}.preview.png").exists(),
+        summary=summary.read_text() if summary.exists() else "",
+        blanks=blanks,
+        records=[r for r in tracker_for(pid).records if r.form_id == fid],
+        statuses=STATUSES,
+        signed_files=[f.name for f in signed],
+        profile_json=json.dumps(p.model_dump(), indent=2),
+    )
+
+
+@app.post("/projects/<pid>/fill")
+def fill(pid: str):
+    p = load_profile(pid)
+    fid = eabo_form_id(p.municipality.name)
+    mp = ensure_mapping(p.municipality.name)
+    fdir = project_dir(pid) / "filled"
+    out_pdf = fdir / f"{fid}.pdf"
+    res = F.fill_overlay(mp, p, out_pdf, mapping_source="cached")
+    F.render_preview(out_pdf, fdir / f"{fid}.preview.png")
+    (fdir / f"{fid}.summary.txt").write_text(assumption_summary(res, mp))
+    # persist the fields left blank for manual entry, for the inline editor
+    # simple scalar gaps only (skip composite/computed targets like *.__oneline__)
+    blanks = [{"label": b.label, "target": b.target}
+              for b in res.blank
+              if b.reason == "no-value" and b.target and "__" not in b.target]
+    (fdir / f"{fid}.blanks.json").write_text(json.dumps(blanks, indent=2))
+    seed_tracker(pid, p, fid)
+    return redirect(url_for("project", pid=pid) + "#forms")
+
+
+@app.post("/projects/<pid>/fields")
+def update_fields(pid: str):
+    """Save the inline 'missing info' inputs back into the profile."""
+    d = load_profile(pid).model_dump()
+    for key, value in request.form.items():
+        if key.startswith("field:") and value.strip():
+            set_path(d, key[len("field:"):], value.strip())
+    ProjectProfile.model_validate(d).save(project_dir(pid) / "profile.json")
+    return redirect(url_for("project", pid=pid))
+
+
+@app.post("/projects/<pid>/profile")
+def update_profile(pid: str):
+    try:
+        d = json.loads(request.form["profile_json"])
+        ProjectProfile.model_validate(d).save(project_dir(pid) / "profile.json")
+    except Exception as e:  # noqa: BLE001 - surface validation errors simply
+        return f"Invalid profile: {e}", 400
+    return redirect(url_for("project", pid=pid))
+
+
+@app.post("/projects/<pid>/track")
+def track(pid: str):
+    tr = tracker_for(pid)
+    tr.set_status(request.form["form_id"], request.form["role"], request.form["status"])
+    tr.save()
+    return redirect(url_for("project", pid=pid) + "#tracker")
+
+
+@app.post("/projects/<pid>/upload-signed")
+def upload_signed(pid: str):
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return redirect(url_for("project", pid=pid))
+    sdir = project_dir(pid) / "signed"
+    sdir.mkdir(exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    file.save(sdir / f"{stamp}__{Path(file.filename).name}")
+    # mark any roles the user checked as signed
+    tr = tracker_for(pid)
+    for role in request.form.getlist("signed_roles"):
+        try:
+            tr.set_status(request.form["form_id"], role, "signed")
+        except KeyError:
+            pass
+    tr.save()
+    return redirect(url_for("project", pid=pid) + "#tracker")
+
+
+@app.route("/projects/<pid>/preview.png")
+def preview(pid: str):
+    p = load_profile(pid)
+    fid = eabo_form_id(p.municipality.name)
+    f = project_dir(pid) / "filled" / f"{fid}.preview.png"
+    if not f.exists():
+        abort(404)
+    return send_file(f, mimetype="image/png")
+
+
+@app.route("/projects/<pid>/filled.pdf")
+def filled_pdf(pid: str):
+    p = load_profile(pid)
+    fid = eabo_form_id(p.municipality.name)
+    f = project_dir(pid) / "filled" / f"{fid}.pdf"
+    if not f.exists():
+        abort(404)
+    return send_file(f, mimetype="application/pdf",
+                     download_name=f"{fid}.pdf")
+
+
+@app.route("/projects/<pid>/signed/<name>")
+def signed_file(pid: str, name: str):
+    f = project_dir(pid) / "signed" / Path(name).name
+    if not f.exists():
+        abort(404)
+    return send_file(f, mimetype="application/pdf", download_name=Path(name).name)
+
+
+@app.route("/projects/<pid>/outreach")
+def outreach(pid: str):
+    p = load_profile(pid)
+    tr = tracker_for(pid)
+    drafts = O.draft_all_outstanding(tr, p, project_dir(pid) / "drafts")
+    return render_template("outreach.html", pid=pid, p=p, drafts=drafts)
+
+
+@app.route("/projects/<pid>/outreach/<role>.eml")
+def outreach_eml(pid: str, role: str):
+    p = load_profile(pid)
+    role = role.replace("_", ":", 1) if role.startswith("consultant_") else role
+    for rec in tracker_for(pid).outstanding():
+        if rec.party_role == role:
+            data = make_eml(O.draft_for(rec, p))
+            return send_file(io.BytesIO(data), mimetype="message/rfc822",
+                             as_attachment=True,
+                             download_name=f"{pid}-{role.replace(':', '_')}.eml")
+    abort(404)
+
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=True)

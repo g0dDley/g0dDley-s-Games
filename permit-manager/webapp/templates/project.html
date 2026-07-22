@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ p.project_name }} · Permit Desk{% endblock %}
+{% block crumb %}<a href="{{ url_for('dashboard') }}">Applications</a> / {{ p.project_name }}{% endblock %}
+{% block body %}
+
+<div class="card">
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <div style="font-size:20px;font-weight:600">{{ p.project_name }}</div>
+      <div class="muted">{{ p.property_address.one_line() or 'No address yet' }}
+        {% if p.municipality.name %}· {{ p.municipality.name }}{% endif %}</div>
+    </div>
+    <span class="badge b-{{ status.label|replace(' ','-') }}" style="font-size:13px">{{ status.label }}</span>
+  </div>
+</div>
+
+<h2 id="forms">Owner Commitment to General Review</h2>
+<div class="card">
+  <div class="row" style="justify-content:space-between">
+    <div class="row">
+      <form method="post" action="{{ url_for('fill', pid=pid) }}">
+        <button class="btn btn-primary">{{ 'Re-fill form' if has_filled else 'Fill form' }}</button>
+      </form>
+      {% if has_filled %}<a class="btn" href="{{ url_for('filled_pdf', pid=pid) }}">Download PDF</a>{% endif %}
+      <a class="btn" href="{{ url_for('outreach', pid=pid) }}">Draft outreach</a>
+    </div>
+    <span class="muted">Signatures are always left blank for manual signing.</span>
+  </div>
+
+  {% if blanks %}
+  <form method="post" action="{{ url_for('update_fields', pid=pid) }}" style="margin-top:16px">
+    <div class="muted" style="margin-bottom:8px">Missing info — fill these and re-fill the form:</div>
+    <div class="grid2">
+      {% for b in blanks %}
+      <div><label class="f">{{ b.label }}</label>
+        <input type="text" name="field:{{ b.target }}" placeholder="{{ b.target }}"></div>
+      {% endfor %}
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn">Save missing info</button></div>
+  </form>
+  {% endif %}
+
+  {% if has_preview %}
+  <div style="margin-top:16px">
+    <img class="preview" src="{{ url_for('preview', pid=pid) }}?v={{ range(99999)|random }}" alt="filled form preview">
+  </div>
+  {% endif %}
+
+  {% if summary %}
+  <details style="margin-top:14px"><summary>Assumption summary (what was filled / left blank)</summary>
+    <pre>{{ summary }}</pre></details>
+  {% endif %}
+</div>
+
+<h2 id="tracker">Signatures</h2>
+<div class="card" style="padding:0">
+  {% if records %}
+  <table>
+    <tr><th>Party</th><th>Name</th><th>Status</th><th>Update</th></tr>
+    {% for r in records %}
+    <tr>
+      <td>{{ r.party_role.replace('consultant:', '').replace('_',' ')|title }}</td>
+      <td>{{ r.recipient_name or '—' }}<div class="muted" style="font-size:12px">{{ r.recipient_email }}</div></td>
+      <td><span class="badge b-{{ r.status }}">{{ r.status }}</span></td>
+      <td>
+        <form method="post" action="{{ url_for('track', pid=pid) }}" class="row">
+          <input type="hidden" name="form_id" value="{{ r.form_id }}">
+          <input type="hidden" name="role" value="{{ r.party_role }}">
+          <select name="status" style="width:auto">
+            {% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s==r.status }}>{{ s }}</option>{% endfor %}
+          </select>
+          <button class="btn">Set</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">Fill the form to start tracking signatures.</div>
+  {% endif %}
+</div>
+
+<h2>Signed copies</h2>
+<div class="card">
+  <form method="post" action="{{ url_for('upload_signed', pid=pid) }}" enctype="multipart/form-data">
+    <input type="hidden" name="form_id" value="{{ fid }}">
+    <label class="f">Upload a signed copy (re-upload each time a new consultant signs)</label>
+    <input type="file" name="file" accept="application/pdf" required>
+    {% if records %}
+    <div style="margin:12px 0">
+      <div class="muted" style="margin-bottom:6px">Mark as signed in this copy:</div>
+      {% for r in records %}
+      <label style="display:inline-flex;gap:6px;align-items:center;margin-right:16px">
+        <input type="checkbox" name="signed_roles" value="{{ r.party_role }}">
+        {{ r.party_role.replace('consultant:', '').replace('_',' ')|title }}</label>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="row"><button class="btn btn-primary">Upload signed copy</button></div>
+  </form>
+  {% if signed_files %}
+  <div style="margin-top:14px">
+    {% for name in signed_files %}
+    <div>📄 <a href="{{ url_for('signed_file', pid=pid, name=name) }}">{{ name }}</a></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<h2>Project data</h2>
+<div class="card">
+  <details><summary>Edit full project profile (JSON)</summary>
+    <form method="post" action="{{ url_for('update_profile', pid=pid) }}" style="margin-top:12px">
+      <textarea name="profile_json" rows="20">{{ profile_json }}</textarea>
+      <div class="row" style="margin-top:12px"><button class="btn">Save profile</button></div>
+    </form>
+  </details>
+</div>
+
+{% endblock %}
