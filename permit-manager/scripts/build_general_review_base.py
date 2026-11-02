@@ -37,6 +37,7 @@ warnings.filterwarnings("ignore")
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+import pikepdf  # noqa: E402
 import pymupdf as fitz  # noqa: E402
 
 SRC = ROOT / "forms/blank/ontario/source/eabo_commitment_general_review_2008_flat.pdf"
@@ -202,44 +203,180 @@ def part_a(page):
 
 
 # ----------------------------------------------------------------- build pdf
+# Static content is the ORIGINAL form's own content stream (same embedded fonts,
+# every character at its original position). Only hidden pieces are removed:
+#   * invisible text (render mode 3 - the PScript driver's padding spaces)
+#   * the blank Symbol tick glyphs (replaced by real checkbox fields)
+#   * white filled boxes (a cover box over block 2, the permit-no. box fill)
+# Page 2 is built from cleaned copies that contain ONLY what is shown there -
+# no clipped/hidden content, no form XObjects.
+SHOW_OPS = {"Tj", "TJ", "'", '"'}
+SYMBOL_FONT = "/T1_3"          # the form's Symbol font (tick glyphs only)
+
+
+def _clean_ops(ops):
+    """Drop invisible text, Symbol tick glyphs and white fills from a parsed
+    content stream; everything else is kept verbatim."""
+    out, tr, font, fill_white, stack = [], 0, None, False, []
+    pending = []                                  # path construction ops
+    for o in ops:
+        op = str(o.operator)
+        if op == "q":
+            stack.append((tr, font, fill_white))
+        elif op == "Q" and stack:
+            tr, font, fill_white = stack.pop()
+        elif op == "Tr":
+            tr = int(o.operands[0])
+        elif op == "Tf":
+            font = str(o.operands[0])
+        elif op in ("rg", "g", "k"):
+            vals = [float(x) for x in o.operands]
+            fill_white = (op == "rg" and vals == [1, 1, 1]) or (op == "g" and vals == [1]) \
+                or (op == "k" and vals == [0, 0, 0, 0])
+        if op in SHOW_OPS and (tr == 3 or font == SYMBOL_FONT):
+            if op == "'":
+                out.append(pikepdf.ContentStreamInstruction([], pikepdf.Operator("T*")))
+            elif op == '"':
+                out.append(pikepdf.ContentStreamInstruction(o.operands[:1], pikepdf.Operator("Tw")))
+                out.append(pikepdf.ContentStreamInstruction(o.operands[1:2], pikepdf.Operator("Tc")))
+                out.append(pikepdf.ContentStreamInstruction([], pikepdf.Operator("T*")))
+            continue
+        if op in ("re", "m", "l", "c", "v", "y", "h"):
+            pending.append(o)
+            continue
+        if op in ("f", "F", "f*") and pending and fill_white:
+            pending = []                          # white fill - drop path + paint
+            continue
+        out.extend(pending)
+        pending = []
+        out.append(o)
+    out.extend(pending)
+    return out
+
+
+def _region_filter_paths(ops, keep):
+    """Drop filled/stroked paths whose centre (top-down y) is not kept."""
+    out, pending, ctm, stack = [], [], (1, 0, 0, 1, 0, 0), []
+
+    def apply(m, x, y):
+        a, b, c, d, e, f = m
+        return a * x + c * y + e, b * x + d * y + f
+
+    def concat(m, n):
+        a, b, c, d, e, f = m
+        A, B, C, D, E, F = n
+        return (a * A + b * C, a * B + b * D, c * A + d * C, c * B + d * D,
+                e * A + f * C + E, e * B + f * D + F)
+
+    for o in ops:
+        op = str(o.operator)
+        if op == "q":
+            stack.append(ctm)
+        elif op == "Q" and stack:
+            ctm = stack.pop()
+        elif op == "cm":
+            ctm = concat(tuple(float(x) for x in o.operands), ctm)
+        if op in ("re", "m", "l", "c", "v", "y", "h"):
+            pending.append((o, ctm))
+            continue
+        if op in ("f", "F", "f*", "S", "s", "B", "B*", "b", "b*", "n") and pending:
+            ys = []
+            for po, m in pending:
+                v = [float(x) for x in po.operands]
+                if str(po.operator) == "re":
+                    ys += [apply(m, v[0], v[1])[1], apply(m, v[0] + v[2], v[1] + v[3])[1]]
+                elif v:
+                    ys.append(apply(m, v[-2], v[-1])[1])
+            if ys and op != "n":
+                cy = PAGE_H - (min(ys) + max(ys)) / 2
+                if not keep(cy):
+                    pending = []
+                    continue
+        out.extend(po for po, _ in pending)
+        pending = []
+        out.append(o)
+    return out
+
+
+PAGE_H = 792.0
+
+
+def _page_ops(pg):
+    return pikepdf.parse_content_stream(pg)
+
+
+def _set_ops(pdf, pg, ops):
+    pg.Contents = pdf.make_stream(pikepdf.unparse_content_stream(ops))
+
+
 def build_pdf() -> int:
-    # a text-free copy of page 1 outside the regions reused on page 2, so the
-    # continuation page carries no hidden Part A / blurb text
-    clean = fitz.open(SRC)
-    cp = clean[0]
-    for r in (fitz.Rect(0, HEADER.y1, 612, BAND.y0 - 0.2), fitz.Rect(0, BAND.y1 + 0.2, 612, FOOTER.y0)):
-        cp.add_redact_annot(r, fill=False)
-    cp.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
-                        graphics=fitz.PDF_REDACT_LINE_ART_NONE)
+    tmp = OUT.with_suffix(".work")
+    tmp.mkdir(exist_ok=True)
 
-    doc = fitz.open(SRC)
-    p1 = doc[0]
-    p2 = doc.new_page(width=p1.rect.width, height=p1.rect.height)
+    # 1. clean page 1 in the original content stream
+    pdf = pikepdf.open(SRC)
+    pg = pdf.pages[0]
+    _set_ops(pdf, pg, _clean_ops(_page_ops(pg)))
+    for k in ("/StructTreeRoot", "/MarkInfo"):     # tags would be duplicated on page 2
+        if k in pdf.Root:
+            del pdf.Root[k]
+    if "/StructParents" in pg.obj:
+        del pg.obj["/StructParents"]
+    pdf.save(tmp / "1-clean.pdf")
 
-    # header (title + solid black rule) and footer, exactly as on page 1
-    p2.show_pdf_page(HEADER, clean, 0, clip=HEADER)
-    p2.show_pdf_page(FOOTER, clean, 0, clip=FOOTER)
+    # 2. two more copies of the cleaned page: header+footer only / one block only
+    doc = fitz.open(tmp / "1-clean.pdf")
+    doc.fullcopy_page(0)
+    doc.fullcopy_page(0)
+    for idx, cut in ((1, [fitz.Rect(0, HEADER.y1, 612, FOOTER.y0)]),
+                     (2, [fitz.Rect(0, 0, 612, BAND.y0 - 0.1), fitz.Rect(0, BAND.y1 + 0.1, 612, 792)])):
+        pg_ = doc[idx]
+        for r in cut:
+            pg_.add_redact_annot(r, fill=False)
+        pg_.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE,
+                             graphics=fitz.PDF_REDACT_LINE_ART_NONE,
+                             text=fitz.PDF_REDACT_TEXT_REMOVE)
+        pg_.clean_contents()
+    doc.save(tmp / "2-parts.pdf", garbage=3)
+    doc.close()
 
-    # "PART B - CONTINUED" label, styled like the form's Part A/B labels
-    label = "PART B – CONTINUED"
-    font = fitz.Font("hebi")
-    tw = font.text_length(label, fontsize=8)
-    box = fitz.Rect(36.0, 61.9, 36.0 + tw + 1.0, 71.3)
-    p2.draw_rect(box, color=None, fill=LABEL_GREY)
-    tw_ = fitz.TextWriter(p2.rect)
-    tw_.append((36.0, 69.3), label, font=font, fontsize=8)
-    tw_.write_text(p2, color=(1, 1, 1))
-
-    # blocks 5 and 6 (copies of a page-1 block band)
-    p2_blocks = []
+    # 3. compose page 2: header + footer, then the block twice, moved up
+    pdf = pikepdf.open(tmp / "2-parts.pdf")
+    hf, band = pdf.pages[1], pdf.pages[2]
+    hf_ops = _region_filter_paths(_page_ops(hf), lambda y: y < HEADER.y1 or y > FOOTER.y0)
+    band_ops = _region_filter_paths(_page_ops(band), lambda y: BAND.y0 <= y <= BAND.y1)
+    body = b"q\n" + pikepdf.unparse_content_stream(hf_ops) + b"\nQ\n"
+    band_bytes = pikepdf.unparse_content_stream(band_ops)
     for i in range(2):
         top = P2_BLOCK_TOP + i * BAND.height
-        dest = fitz.Rect(0, top, 612, top + BAND.height)
-        p2.show_pdf_page(dest, clean, 0, clip=BAND)
-        dy = top - BAND.y0
-        p2_blocks.append({k: v + dy for k, v in P1_BLOCKS[1].items()})
+        ty = BAND.y0 - top                         # PDF y grows upward
+        body += b"q 1 0 0 1 0 %.3f cm\n" % ty + band_bytes + b"\nQ\n"
+    hf.Contents = pdf.make_stream(body)
+    for cat in ("/Font", "/ExtGState", "/XObject"):  # union of resources
+        if cat in band.Resources:
+            if cat not in hf.Resources:
+                hf.Resources[cat] = pikepdf.Dictionary()
+            for k, v in band.Resources[cat].items():
+                if k not in hf.Resources[cat]:
+                    hf.Resources[cat][k] = v
+    del pdf.pages[2]
+    pdf.save(tmp / "3-pages.pdf")
 
-    # fields (re-fetch pages: adding a page invalidates earlier page handles)
+    # 4. label + fields
+    doc = fitz.open(tmp / "3-pages.pdf")
+    p2 = doc[1]
+    label = "PART B \u2013 CONTINUED"            # styled like the form's Part A/B labels
+    font = fitz.Font("hebi")
+    tw = font.text_length(label, fontsize=8)
+    p2.draw_rect(fitz.Rect(36.0, 61.9, 36.0 + tw + 1.0, 71.3), color=None, fill=LABEL_GREY)
+    writer = fitz.TextWriter(p2.rect)
+    writer.append((36.0, 69.3), label, font=font, fontsize=8)
+    writer.write_text(p2, color=(1, 1, 1))
+
+    p2_blocks = []
+    for i in range(2):
+        dy = P2_BLOCK_TOP + i * BAND.height - BAND.y0
+        p2_blocks.append({k: v + dy for k, v in P1_BLOCKS[1].items()})
     p1, p2 = doc[0], doc[1]
     part_a(p1)
     for n, g in enumerate(P1_BLOCKS, start=1):
@@ -250,10 +387,12 @@ def build_pdf() -> int:
     blank_signature_appearances(doc)
     doc.set_metadata({**doc.metadata, "title": TITLE,
                       "subject": "EABO standard form (08/2008) - fillable base, Part B continued on page 2"})
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     doc.save(OUT, garbage=4, deflate=True)
     doc.close()
     merge_field_dicts(OUT)
+    for f in tmp.iterdir():
+        f.unlink()
+    tmp.rmdir()
     return sum(len(list(pg.widgets())) for pg in fitz.open(OUT))
 
 
@@ -275,7 +414,7 @@ def build_mapping() -> dict:
     T("A_AddressOfProject", "Part A: Address of Project", "property_address.__oneline__", A)
     T("A_Municipality", "Part A: Municipality", "municipality.name", A)
     T("A_OwnerName", "Part A: Owner's Name", "owner.company", A)
-    P("A_OwnerDate", "Part A: Owner - Date")
+    P("A_OwnerDate", "Part A: Owner - Date", font_size=A)
     T("A_OwnerAddress", "Part A: Owner's Address", "owner.address.__oneline__", A)
     T("A_OwnerTelephone", "Part A: Owner's Telephone", "owner.phone", A)
     P("A_OwnerSignature", "Part A: Signature of Owner")
@@ -298,7 +437,7 @@ def build_mapping() -> dict:
         T(f"B{n}_ConsultantName", f"Part B{n}: Consultant Name", f"{req}.company", B, requires=req)
         P(f"B{n}_Signature", f"Part B{n}: Signature", requires=req)
         T(f"B{n}_PrintName", f"Part B{n}: Print Name", f"{req}.name", B, requires=req)
-        P(f"B{n}_Date", f"Part B{n}: Date", requires=req)
+        P(f"B{n}_Date", f"Part B{n}: Date", requires=req, font_size=B)
         T(f"B{n}_Telephone", f"Part B{n}: Telephone", f"{req}.phone", B, requires=req)
         T(f"B{n}_Address", f"Part B{n}: Address", f"{req}.address.__oneline__", B, requires=req)
 

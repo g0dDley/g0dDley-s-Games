@@ -3,7 +3,7 @@
   "municipality": "Ontario (all municipalities except the City of Toronto)",
   "form_title": "Commitment to General Review by Architect and Engineer",
   "source_pdf": "forms/blank/ontario/commitment_general_review_eabo_fillable.pdf",
-  "pdf_sha256": "2839bdf899fefb3b064fd63f8479b8f4e5621f30a062e5886236c128924d72e8",
+  "pdf_sha256": "c39314b679930108b0ff2c15e4007f91775df110a59be53b3c63b5f74edd9359",
   "created": "2026-11-02",
   "mapping_version": 2,
   "fill_strategy": "acroform",
@@ -44,7 +44,8 @@
     {
       "pdf_field": "A_OwnerDate",
       "label": "Part A: Owner - Date",
-      "protected": true
+      "protected": true,
+      "font_size": 9.0
     },
     {
       "pdf_field": "A_OwnerAddress",
@@ -199,7 +200,8 @@
       "pdf_field": "B1_Date",
       "label": "Part B1: Date",
       "protected": true,
-      "requires": "consultants.0"
+      "requires": "consultants.0",
+      "font_size": 8.5
     },
     {
       "pdf_field": "B1_Telephone",
@@ -313,7 +315,8 @@
       "pdf_field": "B2_Date",
       "label": "Part B2: Date",
       "protected": true,
-      "requires": "consultants.1"
+      "requires": "consultants.1",
+      "font_size": 8.5
     },
     {
       "pdf_field": "B2_Telephone",
@@ -427,7 +430,8 @@
       "pdf_field": "B3_Date",
       "label": "Part B3: Date",
       "protected": true,
-      "requires": "consultants.2"
+      "requires": "consultants.2",
+      "font_size": 8.5
     },
     {
       "pdf_field": "B3_Telephone",
@@ -541,7 +545,8 @@
       "pdf_field": "B4_Date",
       "label": "Part B4: Date",
       "protected": true,
-      "requires": "consultants.3"
+      "requires": "consultants.3",
+      "font_size": 8.5
     },
     {
       "pdf_field": "B4_Telephone",
@@ -655,7 +660,8 @@
       "pdf_field": "B5_Date",
       "label": "Part B5: Date",
       "protected": true,
-      "requires": "consultants.4"
+      "requires": "consultants.4",
+      "font_size": 8.5
     },
     {
       "pdf_field": "B5_Telephone",
@@ -769,7 +775,8 @@
       "pdf_field": "B6_Date",
       "label": "Part B6: Date",
       "protected": true,
-      "requires": "consultants.5"
+      "requires": "consultants.5",
+      "font_size": 8.5
     },
     {
       "pdf_field": "B6_Telephone",

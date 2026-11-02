@@ -19,6 +19,15 @@ Engineer* made fully fillable (it stays editable after filling):
 * page 1 - the standard form (Part A + Part B blocks 1-4);
 * page 2 - *Part B - Continued*: the same header and rule, blocks 5-6 only.
 
+The page content is the original form's own content stream (same embedded
+fonts, every character at its original position); only the hidden pieces are
+removed - invisible padding text, blank tick glyphs and white cover boxes - and
+page 2 is built without any clipped or hidden layers.
+
+Remaking a form someone already typed on or signed: `carryover.carry_over(old,
+new, out, mapping)` copies their field entries and any images they placed
+(e.g. signatures) onto the fresh copy at the same positions.
+
 Consultants are placed in checkbox order (Architectural, Structural,
 Mechanical, Electrical, Site Services, Other); outside consultants whose signer
 isn't known show company + address only. Signatures and dates are never

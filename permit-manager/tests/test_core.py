@@ -248,3 +248,53 @@ def test_general_review_not_used_for_toronto():
     p.municipality.name = "City of Toronto"
     with pytest.raises(ValueError):
         general_review_mapping(p)
+
+
+def test_general_review_base_form_has_no_hidden_pieces():
+    """Every visible character sits exactly where the original form has it;
+    no invisible text, blank glyphs, white cover boxes or form XObjects."""
+    import fitz
+    src = fitz.open(_ROOT / "forms/blank/ontario/source/eabo_commitment_general_review_2008_flat.pdf")[0]
+    base = fitz.open(_ROOT / "forms/blank/ontario/commitment_general_review_eabo_fillable.pdf")
+    for pg in base:
+        for w in list(pg.widgets()):
+            pg.delete_widget(w)
+    base = fitz.open("pdf", base.tobytes())
+
+    def vis(page):
+        return [(chr(c[0]), round(c[2][0], 2), round(c[2][1], 2), t["font"], round(t["size"], 2))
+                for t in page.get_texttrace() if t["type"] != 3 and t["font"] != "Symbol"
+                for c in t["chars"]]
+
+    assert vis(base[0]) == vis(src)
+    for pg in base:
+        assert not [t for t in pg.get_texttrace() if t["type"] == 3 or t["font"] == "Symbol"]
+        assert not [d for d in pg.get_drawings() if d.get("fill") == (1.0, 1.0, 1.0)]
+        assert not pg.get_xobjects() and not pg.get_images()
+
+
+def test_carry_over_keeps_entries_and_placed_images(tmp_path):
+    import fitz
+    from permit_manager.carryover import carry_over
+    from permit_manager.forms import general_review_mapping
+    p = ProjectProfile.load(_STLUKE)
+    mp = general_review_mapping(p)
+    old, new = tmp_path / "old.pdf", tmp_path / "new.pdf"
+    fill_form(mp, p, old)
+    doc = fitz.open(old)
+    for w in doc[0].widgets():
+        if w.field_name in ("B1_PrintName", "A_OwnerDate"):
+            w.field_value = "Someone Else" if w.field_name == "B1_PrintName" else "2026-11-02"
+            w.text_fontsize = 0
+            w.update()
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 40, 12), False)
+    pix.clear_with(200)
+    doc[0].insert_image(fitz.Rect(278, 452, 350, 474), stream=pix.tobytes("png"))
+    doc.save(tmp_path / "edited.pdf")
+    fill_form(mp, p, new)
+    res = carry_over(tmp_path / "edited.pdf", new, tmp_path / "out.pdf", mp)
+    out = fitz.open(tmp_path / "out.pdf")
+    w = {x.field_name: x for pg in out for x in pg.widgets()}
+    assert w["B1_PrintName"].field_value == "Someone Else"
+    assert w["A_OwnerDate"].field_value == "2026-11-02" and w["A_OwnerDate"].text_fontsize == 9
+    assert len(res.images) == 1 and len(out[0].get_images()) == 1
