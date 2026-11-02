@@ -70,7 +70,13 @@ def test_authorized_signature_placed_when_explicitly_enabled(tmp_path):
     p = _profile()
     p.consultants[0].signature_authorized = True
     p.consultants[0].signer_known = True
-    p.consultants[0].signature_asset = "assets/signatures/nick_swerdfeger.png"
+    # real signatures are local-only (never in the repo) - use a throwaway image
+    import fitz
+    sig = tmp_path / "sig.png"
+    pix = fitz.Pixmap(fitz.csRGB, fitz.IRect(0, 0, 60, 20), False)
+    pix.clear_with(255)
+    pix.save(str(sig))
+    p.consultants[0].signature_asset = str(sig)   # absolute path wins over ROOT /
     p.consultants[0].signature_required = False
     p.consultants.append(Consultant(discipline="MECHANICAL", company="MCW",
                                     name="Paula Terry", signature_required=True))
@@ -178,3 +184,40 @@ def test_long_value_wraps_and_is_never_truncated(tmp_path):
     addr = [f for f in res.filled if f.target == "consultants.0.address.__oneline__"][0]
     assert addr.placement == "wrap-below"
     assert addr.value == p.consultants[0].address.one_line()
+
+
+# ---- Whitby forms (AcroForm + EABO 08/2008 overlay) ------------------------
+import json as _json  # noqa: E402
+
+from permit_manager.forms import fill_form  # noqa: E402
+from permit_manager.schema import ProjectProfile  # noqa: E402
+
+_ROOT = Path(__file__).resolve().parents[1]
+_STLUKE = _ROOT / "data/projects/25062-st-luke-classroom-addition/profile.json"
+
+
+def _whitby(name):
+    return _json.loads((_ROOT / "mappings" / f"town_of_whitby__{name}.json").read_text())
+
+
+def test_acroform_ticks_escaped_checkbox_states(tmp_path):
+    import fitz
+    p = ProjectProfile.load(_STLUKE)
+    out = tmp_path / "permit.pdf"
+    res = fill_form(_whitby("application_permit_construct_demolish"), p, out)
+    assert not [b for b in res.blank if b.reason == "overflow"]
+    on = {w.field_name + ":" + w.on_state()
+          for pg in fitz.open(out) for w in pg.widgets() or []
+          if w.field_type == fitz.PDF_WIDGET_TYPE_CHECKBOX and w.field_value not in ("Off", "", False)}
+    assert any("Addition" in s for s in on)          # '#20'-escaped on-state
+    # signatures / dates never written
+    assert not any("signature" in (f.target or "").lower() for f in res.filled)
+
+
+def test_eabo2008_five_consultants_two_pages(tmp_path):
+    import fitz
+    p = ProjectProfile.load(_STLUKE)
+    out = tmp_path / "gr.pdf"
+    res = fill_form(_whitby("commitment_general_review"), p, out)
+    assert fitz.open(out).page_count == 2
+    assert not any(f.placement == "signature" for f in res.filled)

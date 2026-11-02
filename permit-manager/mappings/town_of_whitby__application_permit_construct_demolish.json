@@ -1,0 +1,554 @@
+{
+  "form_id": "town_of_whitby__application_permit_construct_demolish",
+  "municipality": "Town of Whitby",
+  "form_title": "Application for a Permit to Construct or Demolish (Feb 2026)",
+  "source_pdf": "/home/user/g0dDley-s-Games/permit-manager/forms/blank/whitby/application_permit_construct_demolish_2026-02.pdf",
+  "pdf_sha256": "1574f5df0a6932f672d0c00324a743913a54bf338a5ae5882ea95eb647ba73c7",
+  "created": "2026-11-02",
+  "mapping_version": 1,
+  "fill_strategy": "acroform",
+  "fields": [
+    {
+      "pdf_field": "Application submitted to ((Name of municipality, upper-tier municipality, board of health or conservation authority)",
+      "label": "Application submitted to",
+      "target": "permit.application_submitted_to",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project building number street name",
+      "label": "A. Project street address",
+      "target": "property_address.street_address",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project Lot/Concession",
+      "label": "A. Project lot/concession",
+      "target": "legal_description.lot",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project Municipality",
+      "label": "A. Project municipality",
+      "target": "property_address.city",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project postal code",
+      "label": "A. Project postal code",
+      "target": "property_address.postal_code",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project plan number/other description",
+      "label": "A. Project plan number / other description",
+      "target": "legal_description.registered_plan",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project value estimated (in dollars)",
+      "label": "A. Project value estimated ($)",
+      "target": "permit.value_estimate",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project area of work (in square metres)",
+      "label": "A. Area of work (m2)",
+      "target": "permit.area_sq_m",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Purpose of application",
+      "label": "Purpose: New construction",
+      "on": "New#20construction",
+      "group_label": "Purpose of application",
+      "when": {
+        "target": "permit.purpose",
+        "contains": "New construction"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Purpose of application",
+      "label": "Purpose: Addition to an existing building",
+      "on": "Addition#20to#20an#20existing#20building",
+      "group_label": "Purpose of application",
+      "when": {
+        "target": "permit.purpose",
+        "contains": "Addition"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Purpose of application",
+      "label": "Purpose: Alteration/repair",
+      "on": "Alteration#2Frepair#20",
+      "group_label": "Purpose of application",
+      "when": {
+        "target": "permit.purpose",
+        "contains": "Alteration/Repair"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Purpose of application",
+      "label": "Purpose: Demolition",
+      "on": "Demolition",
+      "group_label": "Purpose of application",
+      "when": {
+        "target": "permit.purpose",
+        "contains": "Demolition"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Purpose of application",
+      "label": "Purpose: Conditional permit",
+      "on": "Condtional#20Permit",
+      "group_label": "Purpose of application",
+      "when": {
+        "target": "permit.purpose",
+        "contains": "Conditional"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Proposed use of building",
+      "label": "A. Proposed use of building",
+      "target": "permit.proposed_use",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Current use of building",
+      "label": "A. Current use of building",
+      "target": "permit.current_use",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Description of proposed work",
+      "label": "A. Description of proposed work",
+      "target": "permit.work_description",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant is",
+      "label": "Applicant is: Owner",
+      "on": "Owner",
+      "group_label": "Applicant is",
+      "when": {
+        "target": "permit.applicant_role",
+        "equals": "owner"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant is",
+      "label": "Applicant is: Authorized agent of owner",
+      "on": "Authorized#20agent#20of#20owner",
+      "group_label": "Applicant is",
+      "when": {
+        "target": "permit.applicant_role",
+        "equals": "agent"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant last name",
+      "label": "B. Applicant last name",
+      "target": "applicant.name.__last__",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant First name",
+      "label": "B. Applicant first name",
+      "target": "applicant.name.__first__",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Corporation or partnership",
+      "label": "B. Applicant corporation",
+      "target": "applicant.company",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Street address",
+      "label": "B. Applicant street address",
+      "target": "applicant.address.street_address",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Unit number",
+      "label": "B. Applicant unit",
+      "target": "applicant.address.unit",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Municipality",
+      "label": "B. Applicant municipality",
+      "target": "applicant.address.city",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Postal code",
+      "label": "B. Applicant postal code",
+      "target": "applicant.address.postal_code",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Province",
+      "label": "B. Applicant province",
+      "target": "applicant.address.province_state",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Email",
+      "label": "B. Applicant email",
+      "target": "applicant.email",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Telephone number",
+      "label": "B. Applicant telephone",
+      "target": "applicant.phone",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Applicant Fax",
+      "label": "B. Applicant fax",
+      "target": "applicant.fax",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Last name",
+      "label": "C. Owner last name",
+      "target": "owner.name.__last__",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner First name",
+      "label": "C. Owner first name",
+      "target": "owner.name.__first__",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Corporation or partnership",
+      "label": "C. Owner corporation",
+      "target": "owner.company",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Street address",
+      "label": "C. Owner street address",
+      "target": "owner.address.street_address",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Municipality",
+      "label": "C. Owner municipality",
+      "target": "owner.address.city",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Postal code",
+      "label": "C. Owner postal code",
+      "target": "owner.address.postal_code",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Province",
+      "label": "C. Owner province",
+      "target": "owner.address.province_state",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Email",
+      "label": "C. Owner email",
+      "target": "owner.email",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Telephone number",
+      "label": "C. Owner telephone",
+      "target": "owner.phone",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner Cell number",
+      "label": "C. Owner cell",
+      "target": "owner.cell",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Builder Corporation or partnership (if applicable)",
+      "label": "D. Builder (not known until tender)",
+      "target": "builder.company",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Is proposed construction for a new home as defined in the Ontario New Home Warranties Plan Act?",
+      "label": "E. New home: Yes",
+      "on": "Yes",
+      "group_label": "E. New home under ONHWP Act?",
+      "when": {
+        "target": "permit.new_home",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Is proposed construction for a new home as defined in the Ontario New Home Warranties Plan Act?",
+      "label": "E. New home: No",
+      "on": "No",
+      "group_label": "E. New home under ONHWP Act?",
+      "when": {
+        "target": "permit.new_home",
+        "equals": false
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Is registration required under the Ontario New Home Warranties Plan Act?",
+      "label": "E. Registration required: Yes",
+      "on": "Yes",
+      "group_label": "E. ONHWP registration required?",
+      "when": {
+        "target": "permit.new_home_registration_required",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Is registration required under the Ontario New Home Warranties Plan Act?",
+      "label": "E. Registration required: No",
+      "on": "No",
+      "group_label": "E. ONHWP registration required?",
+      "when": {
+        "target": "permit.new_home_registration_required",
+        "equals": false
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "This application meets all the requirements of clauses 1.3.1.3 (5) (a) to (d) of Division C of the Building Code (the application is made in the correct form and by the owner or authorized agent,  all applicable fields have been completed on the application and required schedules, and all required schedules are submitted)",
+      "label": "F. Complete application",
+      "on": "Yes",
+      "group_label": "F. Application meets 1.3.1.3(5)(a)-(d)? (applicant declares)",
+      "when": {
+        "target": "permit.declaration_complete",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Payment has been made",
+      "label": "F. Fees paid",
+      "on": "Yes",
+      "group_label": "F. Payment of fees made? (applicant declares)",
+      "when": {
+        "target": "permit.declaration_fees_paid",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "This application is accompanied by the plans and specifications prescribed by the applicable by-law, resolution or regulation made",
+      "label": "F. Plans & specs",
+      "on": "Yes",
+      "group_label": "F. Accompanied by plans & specs? (applicant declares)",
+      "when": {
+        "target": "permit.declaration_plans",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "This application is accompanied",
+      "label": "F. Documents",
+      "on": "Yes",
+      "group_label": "F. Accompanied by required documents? (applicant declares)",
+      "when": {
+        "target": "permit.declaration_documents",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "The proposed building",
+      "label": "F. No contravention",
+      "on": "Yes",
+      "group_label": "F. Will not contravene applicable law? (applicant declares)",
+      "when": {
+        "target": "permit.declaration_no_contravention",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Name of Applicant for Declaration",
+      "label": "G. Declaration - applicant name",
+      "target": "applicant.name",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Date Applicant Signed Main Form",
+      "label": "G. Date (applicant signature)",
+      "protected": true,
+      "confidence": "n/a"
+    },
+    {
+      "pdf_field": "Signature of applicant",
+      "label": "G. Signature of applicant",
+      "protected": true,
+      "confidence": "n/a"
+    },
+    {
+      "pdf_field": "Project Building number street name for Designer Information",
+      "label": "Sch.1 Project street address",
+      "target": "property_address.street_address",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project Lot/Concession for Designer Information",
+      "label": "Sch.1 Project lot/concession",
+      "target": "legal_description.lot",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project Municipality for Designer Information",
+      "label": "Sch.1 Project municipality",
+      "target": "property_address.city",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project Postal code for Designer Information",
+      "label": "Sch.1 Project postal code",
+      "target": "property_address.postal_code",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Project Plan number / other description for Designer Information",
+      "label": "Sch.1 Project plan number",
+      "target": "legal_description.registered_plan",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Name",
+      "label": "Sch.1 Designer name",
+      "target": "architect_of_record.name",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Firm",
+      "label": "Sch.1 Designer firm",
+      "target": "architect_of_record.company",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Street address",
+      "label": "Sch.1 Designer street address",
+      "target": "architect_of_record.address.street_address",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Unit no",
+      "label": "Sch.1 Designer unit",
+      "target": "architect_of_record.address.unit",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Municipality",
+      "label": "Sch.1 Designer municipality",
+      "target": "architect_of_record.address.city",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Postal code",
+      "label": "Sch.1 Designer postal code",
+      "target": "architect_of_record.address.postal_code",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Province",
+      "label": "Sch.1 Designer province",
+      "target": "architect_of_record.address.province_state",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Email",
+      "label": "Sch.1 Designer email",
+      "target": "architect_of_record.email",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Telephone number",
+      "label": "Sch.1 Designer telephone",
+      "target": "architect_of_record.phone",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Fax number",
+      "label": "Sch.1 Designer fax",
+      "target": "architect_of_record.fax",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Design Activities: Large Buildings",
+      "label": "Sch.1 Design activities",
+      "on": "Large#20Buildings",
+      "group_label": "Sch.1 Design activities (check all that apply)",
+      "when": {
+        "target": "permit.designer_activities",
+        "contains": "Large Buildings"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Description of designers work",
+      "label": "Sch.1 Description of designer's work",
+      "target": "permit.designer_work_description",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Designer Name for Declaration",
+      "label": "Sch.1 Declaration - designer name",
+      "target": "architect_of_record.name",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Declaration of Designer",
+      "label": "Sch.1 Design work exempt from registration",
+      "on": "The#20design#20work#20is#20exempt#20from#20the#20registration#20and#20qualification#20requirements#20of#20the#20Building#20Code.#20",
+      "group_label": "Sch.1 Declaration of designer",
+      "when": {
+        "target": "permit.designer_exemption_basis",
+        "truthy": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "For design work, Basis for exemption from registration and qualification",
+      "label": "Sch.1 Basis for exemption",
+      "target": "permit.designer_exemption_basis",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Date Signed by Designer",
+      "label": "Sch.1 Date (designer signature)",
+      "protected": true,
+      "confidence": "n/a"
+    },
+    {
+      "pdf_field": "Signature of Designer",
+      "label": "Sch.1 Signature of designer",
+      "protected": true,
+      "confidence": "n/a"
+    }
+  ],
+  "unmapped_fields": [
+    "Application number / Permit number / Date received / Roll number - for use by principal authority",
+    "Unit / Lot fields for owner, applicant - not applicable",
+    "Builder detail fields - builder not known until tender",
+    "Tarion registration number - not a new home",
+    "Schedule 1 BCIN fields - architect is exempt from BCIN registration",
+    "Schedule 2 (on-site sewage system) - municipal services, not applicable"
+  ]
+}

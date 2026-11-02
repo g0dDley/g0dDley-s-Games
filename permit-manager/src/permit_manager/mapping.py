@@ -264,6 +264,93 @@ def build_eabo_overlay_mapping(intro: Introspection, *, municipality: str,
     }
 
 
+def _no_wrap(entry):
+    """Rows packed too tightly for a wrap line: shrink-to-fit in place instead."""
+    if entry is not None and entry.get("type") in ("text", "sig_date"):
+        entry["place"]["wrap"] = dict(entry["place"]["inline"])
+    return entry
+
+
+def build_eabo2008_overlay_mapping(intro: Introspection, *, municipality: str,
+                                   form_title: str, form_slug: str) -> dict:
+    """Overlay mapping for the older EABO 08/2008 'Commitment to General Review
+    by Architect and Engineer' layout (Owner's Name / Print Name / Consultant
+    Name labels; 4 Part B blocks per page)."""
+    s = intro.spans
+    e: list = []
+
+    # ---- Part A ------------------------------------------------------------
+    e.append(_txt("project_name", "Project Description:",
+                  find_span(s, "Project Description:", 73), 455))
+    e.append(_txt("property_address.__oneline__", "Address of Project:",
+                  find_span(s, "Address of Project:", 101, 36), 455))
+    e.append(_txt("municipality.name", "Municipality:",
+                  find_span(s, "Municipality:", 101, 459), 577))
+    e.append(_txt("permit.application_number", "Permit Application No.:",
+                  find_span(s, "Permit Application No.", 66, 485), 576))
+
+    e.append(_txt("owner.company", "Owner's Name:", find_span(s, "Owner’s Name:", 277), 428))
+    e.append(_sig_date("Date (owner):", find_span(s, "Date:", 277, 432), "owner", 577))
+    e.append(_txt("owner.address.__oneline__", "Owner's Address:",
+                  find_span(s, "Owner’s Address:", 303), 428))
+    e.append(_txt("owner.phone", "Telephone (owner):", find_span(s, "Telephone:", 303, 432), 577))
+    sig = find_span(s, "Signature of Owner:", 328)
+    pn = find_span(s, "Print Name:", 328, 288)
+    e.append(_sig("Signature of Owner:", sig, pn, "owner"))
+    e.append(_txt("owner.name", "Print Name (owner):", pn, 428))
+    e.append(_txt("owner.fax", "Fax (owner):", find_span(s, "Fax:", 328, 432), 577))
+    e.append(_no_wrap(_txt("coordinator.company", "Coordinator of the work of all consultants:",
+                           find_span(s, "Coordinator of the work of all consultants:", 357), 428)))
+    e.append(_no_wrap(_txt("coordinator.phone", "Coordinator Telephone:",
+                           find_span(s, "Telephone:", 357, 432), 577)))
+    e.append(_no_wrap(_txt("coordinator.address.__oneline__", "Coordinator Address:",
+                           find_span(s, "Address:", 378, 36), 428)))
+    e.append(_no_wrap(_txt("coordinator.fax", "Coordinator Fax:",
+                           find_span(s, "Fax:", 378, 432), 577)))
+
+    # ---- Part B: 4 blocks -----------------------------------------------------
+    names = sorted((sp for sp in s if _norm(sp.text) == "consultant name:"),
+                   key=lambda sp: sp.rect[1])
+    for i, nm in enumerate(names[:_BLOCKS]):
+        b = nm.baseline_y
+        # discipline row: pair each checkbox glyph with the label to its right
+        row = sorted((sp for sp in s if abs(sp.baseline_y - (b - 9.5)) < 2.5),
+                     key=lambda sp: sp.rect[0])
+        options = {}
+        for j, sp in enumerate(row):
+            if sp.text.strip() in ("\x7f", "") and j + 1 < len(row):
+                key = row[j + 1].text.strip().split(":")[0].rstrip("_ ").upper()
+                gx, gb = sp.rect[0], sp.baseline_y
+                options[key] = [round(gx - 1, 1), round(gb - 6, 1), round(gx + 5, 1), round(gb, 1)]
+        e.append({"target": f"consultants.{i}.discipline", "label": f"Part B block {i+1} - discipline",
+                  "page": nm.page, "anchor_rect": nm.rect, "type": "checkbox_group",
+                  "options": options, "place": {"mode": "mark", "fontsize": 9.0},
+                  "protected": False, "confidence": "high", "note": ""})
+        e.append(_txt(f"consultants.{i}.company", f"Part B{i+1} Consultant Name:", nm, 230))
+        sg = find_span(s, "Signature:", b - 6, 234)
+        pn = find_span(s, "Print Name:", b - 6, 351)
+        e.append(_sig(f"Part B{i+1} Signature:", sg, pn, f"consultants.{i}"))
+        e.append(_txt(f"consultants.{i}.name", f"Part B{i+1} Print Name:", pn, 482))
+        e.append(_sig_date(f"Part B{i+1} Date:", find_span(s, "Date:", b - 6, 486),
+                           f"consultants.{i}", 577))
+        tel = find_span(s, "Telephone:", b + 23, 36)
+        e.append(_txt(f"consultants.{i}.phone", f"Part B{i+1} Telephone:", tel, 230))
+        e.append(_txt(f"consultants.{i}.address.__oneline__", f"Part B{i+1} Address:",
+                      find_span(s, "Address:", b + 23, 234), 577))
+
+    fields = [x for x in e if x is not None]
+    return {
+        "form_id": form_id(_slug(municipality), form_slug),
+        "municipality": municipality, "form_title": form_title,
+        "source_pdf": intro.path, "pdf_sha256": intro.sha256,
+        "created": date.today().isoformat(), "mapping_version": MAPPING_VERSION,
+        "fill_strategy": "overlay", "layout": "eabo-2008",
+        "page_size": _page_size(intro), "consultants_per_page": _BLOCKS,
+        "fields": fields,
+        "unmapped_fields": [f"entry #{k} anchor not found" for k, x in enumerate(e) if x is None],
+    }
+
+
 def _page_size(intro: Introspection) -> list[float]:
     import fitz
     d = fitz.open(intro.path)

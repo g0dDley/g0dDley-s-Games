@@ -1,0 +1,337 @@
+{
+  "form_id": "town_of_whitby__applicable_law_checklist",
+  "municipality": "Town of Whitby",
+  "form_title": "Applicable Law Checklist (2026)",
+  "source_pdf": "/home/user/g0dDley-s-Games/permit-manager/forms/blank/whitby/applicable_law_checklist_2026.pdf",
+  "pdf_sha256": "044fb4656f9c527f34b8087cedba682614a9454413a389515759c9cede9e9270",
+  "created": "2026-11-02",
+  "mapping_version": 1,
+  "fill_strategy": "acroform",
+  "fields": [
+    {
+      "pdf_field": "Municipal Address",
+      "label": "Municipal address",
+      "target": "property_address.__oneline__",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box1",
+      "label": "Minor variance (Planning Act s.45)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "minor_variance"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box2",
+      "label": "Zoning by-law amendment (Planning Act s.34/38)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "zoning_bylaw_amendment"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box3",
+      "label": "Division of land (Planning Act Part VI)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "division_of_land"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box29",
+      "label": "Provincial zoning orders (Planning Act s.47)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "provincial_zoning_orders"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box5",
+      "label": "Site plan approval (Planning Act s.41)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "site_plan_approval"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box6",
+      "label": "Planning & Development Act s.14, 17(1)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "planning_development_act"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box7",
+      "label": "Ontario Heritage Act s.30(2), 33, 34",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "heritage_designated"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box8",
+      "label": "Ontario Heritage Act s.27",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "heritage_listed"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box9",
+      "label": "Ontario Heritage Act s.42",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "heritage_district"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box10",
+      "label": "Ontario Heritage Act s.40.1",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "heritage_study_area"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box11",
+      "label": "Ontario Heritage Act s.35.5 & 34.7(2)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "heritage_minister"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box12",
+      "label": "Conservation Authority permit (CA Act s.28)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "conservation_authority_permit"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box13",
+      "label": "Nutrient Management Act",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "nutrient_management"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box14",
+      "label": "Milk Act s.14",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "milk_act"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box15",
+      "label": "Child Care and Early Years Act",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "child_care"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box16",
+      "label": "Demolition of schools (Education Act s.194)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "demolition_of_schools"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box17",
+      "label": "Environmental Assessment Act s.5",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "environmental_assessment"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box18",
+      "label": "Brownfield redevelopment (EPA s.168)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "brownfield"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box25",
+      "label": "Former waste disposal sites (EPA s.46)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "former_waste_disposal"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box20",
+      "label": "MTO permit (PTHIA s.34/38)",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "mto_permit"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box21",
+      "label": "Within 45 m of a highway / 180 m of intersection",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "highway_45m"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box22",
+      "label": "Within 395 m of a controlled highway intersection",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "highway_395m"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box23",
+      "label": "Major traffic generator within 800 m of a highway",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "highway_major_traffic"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box24",
+      "label": "Building Transit Faster Act s.3",
+      "on": "Yes",
+      "group_label": "Applicable laws (tick those that apply)",
+      "when": {
+        "target": "applicable_laws",
+        "contains": "transit_faster_act"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box26",
+      "label": "1. None of the items apply",
+      "on": "Yes",
+      "group_label": "Applicant declaration: none apply / all complete & attached / some still pending",
+      "when": {
+        "target": "applicable_law_status",
+        "equals": "none"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box27",
+      "label": "2. All approvals completed and attached",
+      "on": "Yes",
+      "group_label": "Applicant declaration: none apply / all complete & attached / some still pending",
+      "when": {
+        "target": "applicable_law_status",
+        "equals": "complete"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Check Box28",
+      "label": "3. Approvals not yet completed",
+      "on": "Yes",
+      "group_label": "Applicant declaration: none apply / all complete & attached / some still pending",
+      "when": {
+        "target": "applicable_law_status",
+        "equals": "pending"
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Text29",
+      "label": "Declaration - name",
+      "target": "applicant.name",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Signature32_es_:signer:signature",
+      "label": "Declaration - signature",
+      "protected": true,
+      "confidence": "n/a"
+    },
+    {
+      "pdf_field": "Text31",
+      "label": "Declaration - date",
+      "protected": true,
+      "confidence": "n/a"
+    }
+  ],
+  "unmapped_fields": [
+    "Application No / Date Received / right-hand 'office use' boxes - for municipal use",
+    "Highway Yes/No blanks (p.4) - answered only if those items apply"
+  ]
+}

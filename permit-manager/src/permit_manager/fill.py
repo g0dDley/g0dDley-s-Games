@@ -77,6 +77,16 @@ def _resolve_value(profile: ProjectProfile, target: str) -> str:
             if obj is None:
                 return ""
             return getattr(obj, method)() if hasattr(obj, method) else str(obj)
+    # person-name splitting for forms with separate first / last fields
+    for suffix in (".__first__", ".__last__"):
+        if target.endswith(suffix):
+            name = str(resolve_path(profile, target[: -len(suffix)]) or "").strip()
+            if not name:
+                return ""
+            parts = name.split()
+            if len(parts) < 2:
+                return name if suffix == ".__last__" else ""
+            return parts[0] if suffix == ".__first__" else " ".join(parts[1:])
     val = resolve_path(profile, target)
     if val is None:
         return ""
@@ -251,6 +261,38 @@ def _handle_sig_date(page, entry, profile, res, today, apply_signatures=False):
     _place_text(page, value, entry["place"], _TEXT_COLOR)
     res.filled.append(FilledField(label, entry.get("sig_target", "") + ".signature_date",
                                   value, placement="inline"))
+
+
+def fill_overlay_paged(mapping: dict, profile: ProjectProfile, out_path: str | Path,
+                       **kw) -> FillResult:
+    """Fill an overlay form whose Part B holds a fixed number of consultant
+    blocks per page. When there are more consultants than blocks, additional
+    copies of the page are produced (Part A repeated so each copy stands on its
+    own), consultants continuing in discipline order."""
+    per = mapping.get("consultants_per_page", 4)
+    ordered = sorted(profile.consultants,
+                     key=lambda c: DISCIPLINE_ORDER.index(c.discipline)
+                     if c.discipline in DISCIPLINE_ORDER else len(DISCIPLINE_ORDER))
+    if len(ordered) <= per:
+        return fill_overlay(mapping, profile, out_path, **kw)
+
+    out_path = Path(out_path)
+    combined = fitz.open()
+    total = FillResult(output_pdf=str(out_path), mapping_source=kw.get("mapping_source", "cached"))
+    for k in range(0, len(ordered), per):
+        part = profile.model_copy(deep=True)
+        part.consultants = [c.model_copy(deep=True) for c in ordered[k:k + per]]
+        tmp = out_path.with_suffix(f".part{k // per + 1}.pdf")
+        r = fill_overlay(mapping, part, tmp, **kw)
+        tag = f"[copy {k // per + 1}] "
+        total.filled += [FilledField(tag + f.label, f.target, f.value, f.placement) for f in r.filled]
+        total.blank += [BlankField(tag + b.label, b.reason, b.target) for b in r.blank]
+        total.low_confidence += r.low_confidence
+        combined.insert_pdf(fitz.open(tmp))
+        tmp.unlink()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    combined.save(str(out_path), garbage=3, deflate=True)
+    return total
 
 
 def render_preview(pdf_path: str | Path, out_png: str | Path,

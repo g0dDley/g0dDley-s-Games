@@ -1,0 +1,268 @@
+{
+  "project_id": "25062-st-luke-classroom-addition",
+  "project_name": "Eight Classroom Addition - St. Luke the Evangelist Catholic School",
+  "municipality": {
+    "name": "Town of Whitby",
+    "province_state": "ON",
+    "country": "CA"
+  },
+  "property_address": {
+    "street_address": "55 Twin Streams Road",
+    "unit": "",
+    "city": "Whitby",
+    "province_state": "ON",
+    "postal_code": "L1P 1N9",
+    "country": "CA"
+  },
+  "legal_description": {
+    "lot": "",
+    "registered_plan": "",
+    "concession": "",
+    "part": "",
+    "roll_number": ""
+  },
+  "permit": {
+    "type": "construct",
+    "purpose": [
+      "Addition",
+      "Alteration/Repair"
+    ],
+    "work_description": "Two-storey addition of eight (8) classrooms including a universal washroom (approx. 847 m2 new gross floor area) to the existing school, with associated interior alterations (change room renovation, gymnasium modifications, mechanical and electrical work) and site works.",
+    "current_use": "Elementary school (Group A, Division 2)",
+    "proposed_use": "Elementary school (Group A, Division 2)",
+    "value_estimate": "",
+    "area_sq_m": "",
+    "application_number": "",
+    "application_submitted_to": "Town of Whitby",
+    "applicant_role": "agent",
+    "new_home": false,
+    "new_home_registration_required": false,
+    "designer_work_description": "Architectural design of the eight classroom addition and associated interior alterations",
+    "designer_exemption_basis": "Licensed architect (OAA)"
+  },
+  "owner": {
+    "name": "Prasath Vinayagamoorthy",
+    "company": "Durham Catholic District School Board",
+    "license_number": "",
+    "address": {
+      "street_address": "383 Chaleur Avenue",
+      "unit": "",
+      "city": "Oshawa",
+      "province_state": "ON",
+      "postal_code": "L1J 1G5",
+      "country": "CA"
+    },
+    "phone": "(905) 576-6150 ext. 22207",
+    "cell": "365-885-8931",
+    "fax": "",
+    "email": "prasath.vinayagamoorthy@dcdsb.ca",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": "",
+    "signature_required": true
+  },
+  "applicant": {
+    "name": "",
+    "company": "Barry Bryan Associates",
+    "license_number": "",
+    "address": {
+      "street_address": "250 Water Street",
+      "unit": "201",
+      "city": "Whitby",
+      "province_state": "ON",
+      "postal_code": "L1N 0G5",
+      "country": "CA"
+    },
+    "phone": "(905) 666-5252",
+    "cell": "",
+    "fax": "(905) 666-5256",
+    "email": "",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": "",
+    "signature_required": true
+  },
+  "applicant_same_as_owner": false,
+  "architect_of_record": {
+    "name": "Nick Swerdfeger",
+    "company": "Barry Bryan Associates",
+    "license_number": "OAA 7117",
+    "address": {
+      "street_address": "250 Water Street",
+      "unit": "201",
+      "city": "Whitby",
+      "province_state": "ON",
+      "postal_code": "L1N 0G5",
+      "country": "CA"
+    },
+    "phone": "(905) 666-5252",
+    "cell": "",
+    "fax": "(905) 666-5256",
+    "email": "nswerdfeger@bba-archeng.com",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": ""
+  },
+  "coordinator": {
+    "name": "",
+    "company": "Barry Bryan Associates",
+    "license_number": "",
+    "address": {
+      "street_address": "250 Water Street",
+      "unit": "201",
+      "city": "Whitby",
+      "province_state": "ON",
+      "postal_code": "L1N 0G5",
+      "country": "CA"
+    },
+    "phone": "(905) 666-5252",
+    "cell": "",
+    "fax": "(905) 666-5256",
+    "email": "",
+    "signature_authorized": false,
+    "signature_asset": "",
+    "signature_date": ""
+  },
+  "consultants": [
+    {
+      "name": "Nick Swerdfeger",
+      "company": "Barry Bryan Associates",
+      "license_number": "",
+      "address": {
+        "street_address": "250 Water Street",
+        "unit": "201",
+        "city": "Whitby",
+        "province_state": "ON",
+        "postal_code": "L1N 0G5",
+        "country": "CA"
+      },
+      "phone": "(905) 666-5252",
+      "cell": "",
+      "fax": "",
+      "email": "nswerdfeger@bba-archeng.com",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "ARCHITECTURAL",
+      "discipline_other": "",
+      "role_label": "",
+      "signature_required": true,
+      "signer_known": true
+    },
+    {
+      "name": "David Bovill",
+      "company": "Barry Bryan Associates",
+      "license_number": "",
+      "address": {
+        "street_address": "250 Water Street",
+        "unit": "201",
+        "city": "Whitby",
+        "province_state": "ON",
+        "postal_code": "L1N 0G5",
+        "country": "CA"
+      },
+      "phone": "(905) 666-5252",
+      "cell": "",
+      "fax": "",
+      "email": "dbovill@bba-archeng.com",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "STRUCTURAL",
+      "discipline_other": "",
+      "role_label": "",
+      "signature_required": true,
+      "signer_known": true
+    },
+    {
+      "name": "",
+      "company": "RDZ Eng",
+      "license_number": "",
+      "address": {
+        "street_address": "30 Pennsylvania Avenue",
+        "unit": "17A",
+        "city": "Vaughan",
+        "province_state": "ON",
+        "postal_code": "L4K 4A5",
+        "country": "CA"
+      },
+      "phone": "",
+      "cell": "",
+      "fax": "",
+      "email": "info@rdzeng.ca",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "MECHANICAL",
+      "discipline_other": "",
+      "role_label": "",
+      "signature_required": true,
+      "signer_known": false
+    },
+    {
+      "name": "",
+      "company": "RDZ Eng",
+      "license_number": "",
+      "address": {
+        "street_address": "30 Pennsylvania Avenue",
+        "unit": "17A",
+        "city": "Vaughan",
+        "province_state": "ON",
+        "postal_code": "L4K 4A5",
+        "country": "CA"
+      },
+      "phone": "",
+      "cell": "",
+      "fax": "",
+      "email": "info@rdzeng.ca",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "ELECTRICAL",
+      "discipline_other": "",
+      "role_label": "",
+      "signature_required": true,
+      "signer_known": false
+    },
+    {
+      "name": "",
+      "company": "Monument Geomatics & Estimating Inc.",
+      "license_number": "",
+      "address": {
+        "street_address": "335 Highway 49",
+        "unit": "",
+        "city": "Deseronto",
+        "province_state": "ON",
+        "postal_code": "K0K 1X0",
+        "country": "CA"
+      },
+      "phone": "(613) 800-1579",
+      "cell": "",
+      "fax": "",
+      "email": "",
+      "signature_authorized": false,
+      "signature_asset": "",
+      "signature_date": "",
+      "discipline": "SITE SERVICES",
+      "discipline_other": "",
+      "role_label": "",
+      "signature_required": true,
+      "signer_known": false
+    }
+  ],
+  "owner_authorization_attached": false,
+  "applicable_laws": [
+    "site_plan_approval"
+  ],
+  "applicable_law_status": "",
+  "notes": [
+    "Legal description (lot / registered plan) and assessment roll number not in any document provided - from survey (IBW A-060135) or Town records.",
+    "Estimated project value not on the PIF (Construction Value blank).",
+    "Area of work: A000 matrix gives new GFA 847.04 m2; renovation area not stated.",
+    "Applicant (person) not specified - BBA is applicant firm; name/email needed.",
+    "Owner address: rep's office 383 Chaleur Ave used (per user); PIF lists board at 652 Rossland Rd W, Oshawa L1J 8M7.",
+    "7 existing portables to be removed (A101) - may need a demolition permit / 'Demolition' purpose.",
+    "Site Services (Monument) general review assumed applicable - civil includes storm sewers; confirm.",
+    "RDZ legal firm name shown only as 'RDZ ENG' on drawings."
+  ]
+}

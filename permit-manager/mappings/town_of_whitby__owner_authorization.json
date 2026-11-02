@@ -1,0 +1,77 @@
+{
+  "form_id": "town_of_whitby__owner_authorization",
+  "municipality": "Town of Whitby",
+  "form_title": "Owner's Authorization",
+  "source_pdf": "/home/user/g0dDley-s-Games/permit-manager/forms/blank/whitby/owner_authorization.pdf",
+  "pdf_sha256": "a4f46a9907d5f084b0d1fc309749550f9089cbe9252a5c880ed60be885867640",
+  "created": "2026-11-02",
+  "mapping_version": 1,
+  "fill_strategy": "acroform",
+  "fields": [
+    {
+      "pdf_field": "Is written authorization attached",
+      "label": "Written authorization attached: Yes",
+      "on": "Yes",
+      "group_label": "Is written authorization attached?",
+      "when": {
+        "target": "owner_authorization_attached",
+        "equals": true
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Is written authorization attached",
+      "label": "Written authorization attached: No",
+      "on": "No",
+      "group_label": "Is written authorization attached?",
+      "when": {
+        "target": "owner_authorization_attached",
+        "equals": false
+      },
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Owner",
+      "label": "I, ___ am the owner of the land",
+      "target": "owner.company",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Representative",
+      "label": "I authorize ___ to prepare and submit",
+      "target": "applicant.company",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Address",
+      "label": "Property Address",
+      "target": "property_address.__oneline__",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Email",
+      "label": "Owner's Email",
+      "target": "owner.email",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Phone Number",
+      "label": "Owner's Telephone Number",
+      "target": "owner.phone",
+      "confidence": "high"
+    },
+    {
+      "pdf_field": "Signature",
+      "label": "Owner's Signature",
+      "protected": true,
+      "confidence": "n/a"
+    },
+    {
+      "pdf_field": "Date",
+      "label": "Date (owner signature)",
+      "protected": true,
+      "confidence": "n/a"
+    }
+  ],
+  "unmapped_fields": []
+}

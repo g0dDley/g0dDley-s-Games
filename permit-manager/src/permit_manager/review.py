@@ -9,6 +9,7 @@ _REASON_LABEL = {
     "unmapped": "no confident mapping",
     "no-value": "needs manual entry or an attachment (no value on file)",
     "low-confidence-skipped": "low-confidence mapping - needs your OK",
+    "overflow": "too long to fit the field even when shrunk - left blank, NOT truncated",
 }
 
 

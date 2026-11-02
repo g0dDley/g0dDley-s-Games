@@ -48,6 +48,7 @@ class Contact(BaseModel):
     license_number: str = ""  # OAA / BCIN / PEO, where applicable
     address: Address = Field(default_factory=Address)
     phone: str = ""
+    cell: str = ""
     fax: str = ""
     email: str = ""
 
@@ -98,6 +99,15 @@ class Permit(BaseModel):
     value_estimate: str = ""       # kept as string to preserve "1,000,000" formatting
     area_sq_m: str = ""
     application_number: str = ""
+    application_submitted_to: str = ""   # e.g. "Town of Whitby"
+    # Who is applying: "owner" or "agent" (authorized agent of owner). "" = unknown.
+    applicant_role: Literal["owner", "agent", ""] = ""
+    # Ontario New Home Warranties Plan Act questions. None = unknown -> left blank.
+    new_home: Optional[bool] = None
+    new_home_registration_required: Optional[bool] = None
+    # Schedule 1 (designer) - filled from architect_of_record
+    designer_work_description: str = ""
+    designer_exemption_basis: str = ""   # e.g. "Licensed architect (OAA)"
 
 
 class Party(Contact):
@@ -143,8 +153,23 @@ class ProjectProfile(BaseModel):
     # EABO Part A: "coordinator of the work of all architects and engineers"
     coordinator: Contact = Field(default_factory=Contact)
 
-    # EABO Part B: one entry per retained architect / engineer (max 4 per page)
+    # EABO Part B: one entry per retained architect / engineer (4 per page;
+    # extra consultants continue on additional copies of the page)
     consultants: list[Consultant] = Field(default_factory=list)
+
+    # Owner's Authorization: is a separate written authorization attached?
+    # False = the owner completes the authorization on the form. None = unknown.
+    owner_authorization_attached: Optional[bool] = None
+
+    # Applicable-law approvals that apply (keys used by checklist mappings),
+    # e.g. ["site_plan_approval"]. Only list ones confirmed to apply.
+    applicable_laws: list[str] = Field(default_factory=list)
+    # Applicable Law Checklist final declaration: "none" apply / all approvals
+    # "complete" and attached / approvals still "pending". "" = unknown.
+    applicable_law_status: Literal["none", "complete", "pending", ""] = ""
+
+    # Free-form notes / open questions captured while assembling the profile.
+    notes: list[str] = Field(default_factory=list)
 
     # ---- persistence -------------------------------------------------
     @classmethod
