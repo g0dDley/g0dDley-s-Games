@@ -114,6 +114,17 @@ def cmd_outreach(a):
           "(not sent).")
 
 
+def cmd_unlock(a):
+    from .unlock import unlock_form
+    r = unlock_form(a.pdf, a.out)
+    if r.digitally_signed:
+        print("Left unchanged - digitally signed (unlocking would invalidate): "
+              + ", ".join(r.digitally_signed))
+        return
+    why = " (locked by Acrobat Fill & Sign)" if r.fill_sign_marker else ""
+    print(f"Unlocked {r.unlocked} fields{why} -> {r.output}")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="permit_manager")
     sub = p.add_subparsers(required=True)
@@ -133,6 +144,10 @@ def main(argv=None):
     s.add_argument("--init", help="seed records from profile for FORM_ID")
     s.add_argument("--set", help="FORM_ID/role=status")
     s.set_defaults(fn=cmd_track)
+
+    s = sub.add_parser("unlock", help="make a saved / Fill & Sign-locked form editable again")
+    s.add_argument("pdf"); s.add_argument("-o", "--out", help="output (default: in place)")
+    s.set_defaults(fn=cmd_unlock)
 
     s = sub.add_parser("outreach"); s.add_argument("--project", required=True)
     s.set_defaults(fn=cmd_outreach)

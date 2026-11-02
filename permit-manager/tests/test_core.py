@@ -298,3 +298,25 @@ def test_carry_over_keeps_entries_and_placed_images(tmp_path):
     assert w["B1_PrintName"].field_value == "Someone Else"
     assert w["A_OwnerDate"].field_value == "2026-11-02" and w["A_OwnerDate"].text_fontsize == 9
     assert len(res.images) == 1 and len(out[0].get_images()) == 1
+
+
+def test_unlock_clears_fill_and_sign_read_only(tmp_path):
+    import fitz
+    from permit_manager.forms import general_review_mapping
+    from permit_manager.unlock import unlock_form
+    p = ProjectProfile.load(_STLUKE)
+    pdf = tmp_path / "gr.pdf"
+    fill_form(general_review_mapping(p), p, pdf)
+    doc = fitz.open(pdf)                      # simulate Acrobat Fill & Sign locking
+    for pg in doc:
+        for w in pg.widgets():
+            doc.xref_set_key(w.xref, "Ff", str(int(doc.xref_get_key(w.xref, "Ff")[1] or 0) | 1))
+    doc.xref_set_key(doc.pdf_catalog(), "ADBE_FillSignInfo", "<</Version 100>>")
+    before = {w.field_name: w.field_value for pg in doc for w in pg.widgets()}
+    doc.save(tmp_path / "locked.pdf")
+    r = unlock_form(tmp_path / "locked.pdf", tmp_path / "open.pdf")
+    assert r.unlocked == 93 and r.fill_sign_marker and not r.digitally_signed
+    out = fitz.open(tmp_path / "open.pdf")
+    assert not any(w.field_flags & 1 for pg in out for w in pg.widgets())
+    assert {w.field_name: w.field_value for pg in out for w in pg.widgets()} == before
+    assert "ADBE_FillSignInfo" not in out.xref_object(out.pdf_catalog())

@@ -28,6 +28,12 @@ Remaking a form someone already typed on or signed: `carryover.carry_over(old,
 new, out, mapping)` copies their field entries and any images they placed
 (e.g. signatures) onto the fresh copy at the same positions.
 
+Signing with Acrobat's **Fill & Sign** makes every field read-only when the
+file is saved. `python -m permit_manager unlock <file.pdf>` makes it editable
+again (values and signatures untouched); signed copies uploaded through the web
+app are unlocked automatically. Certificate (digital ID) signatures are never
+touched, since changing the file would invalidate them.
+
 Consultants are placed in checkbox order (Architectural, Structural,
 Mechanical, Electrical, Site Services, Other); outside consultants whose signer
 isn't known show company + address only. Signatures and dates are never

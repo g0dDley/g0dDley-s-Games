@@ -25,6 +25,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for claude_helper
 
 from permit_manager import forms as FORMS            # noqa: E402
+from permit_manager.unlock import unlock_form        # noqa: E402
 from permit_manager.schema import ProjectProfile, resolve_path  # noqa: E402
 from permit_manager.tracker import STATUSES, SignatureRecord, Tracker  # noqa: E402
 from permit_manager import outreach as O             # noqa: E402
@@ -320,7 +321,16 @@ def upload_signed(pid: str):
     sdir = project_dir(pid) / "signed"
     sdir.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    file.save(sdir / f"{stamp}__{Path(file.filename).name}")
+    saved = sdir / f"{stamp}__{Path(file.filename).name}"
+    file.save(saved)
+    # Acrobat's Fill & Sign makes every field read-only when a signature is
+    # saved - clear that so the form can keep being filled / re-signed.
+    # (Certificate-signed files are left untouched.)
+    if saved.suffix.lower() == ".pdf":
+        try:
+            unlock_form(saved)
+        except Exception:  # noqa: BLE001 - keep the upload even if unlocking fails
+            pass
     # mark any roles the user checked as signed
     tr = tracker_for(pid)
     for role in request.form.getlist("signed_roles"):
