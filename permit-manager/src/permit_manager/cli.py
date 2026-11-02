@@ -53,7 +53,8 @@ def cmd_fill(a):
     mp = M.load_mapping(M.cache_path(MAPPINGS, a.form))
     profile = ProjectProfile.load(_project_dir(a.project) / "profile.json")
 
-    intro = I.introspect(mp["source_pdf"])
+    src = Path(mp["source_pdf"])
+    intro = I.introspect(src if src.is_absolute() else F.ROOT / src)
     if M.is_stale(mp, intro):
         print("WARNING: blank form changed since mapping was cached - re-run map-eabo.")
 
@@ -66,8 +67,10 @@ def cmd_fill(a):
         print(assumption_summary(res, mp))
         print(f"\nPreview   : {png}")
     else:
-        res = F.fill_acroform(mp, profile, out_pdf, mapping_source="cached")
-        print(assumption_summary(res, mp))
+        from .forms import fill_and_review
+        r = fill_and_review(mp, profile, out_pdf.parent)
+        print(r["summary"])
+        print("\nPreview   : " + ", ".join(str(x) for x in r["previews"]))
 
 
 def cmd_track(a):

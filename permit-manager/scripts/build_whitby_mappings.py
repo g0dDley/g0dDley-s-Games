@@ -236,10 +236,6 @@ save("applicable_law_checklist", "Applicable Law Checklist (2026)", pdf, fields,
     "Highway Yes/No blanks (p.4) - answered only if those items apply",
 ])
 
-# ------------------------------------- commitment to general review (EABO 08/2008)
-pdf = BLANK / "commitment_general_review_eabo_2008.pdf"
-mp = M.build_eabo2008_overlay_mapping(I.introspect(pdf), municipality=MUNI,
-                                      form_title="Commitment to General Review by Architect and Engineer",
-                                      form_slug="commitment_general_review")
-M.save_mapping(M.cache_path(ROOT / "mappings", mp["form_id"]), mp)
-print(f"wrote {mp['form_id']}.json: {len(mp['fields'])} anchors, {len(mp['unmapped_fields'])} unmatched")
+# ------------------------------------- commitment to general review
+# Whitby uses the standard Ontario base form (all municipalities except Toronto):
+# see scripts/build_general_review_base.py -> mappings/ontario__commitment_general_review.json

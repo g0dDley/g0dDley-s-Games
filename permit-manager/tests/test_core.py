@@ -214,10 +214,37 @@ def test_acroform_ticks_escaped_checkbox_states(tmp_path):
     assert not any("signature" in (f.target or "").lower() for f in res.filled)
 
 
-def test_eabo2008_five_consultants_two_pages(tmp_path):
+def test_general_review_base_form_is_fillable_with_continuation_page(tmp_path):
     import fitz
+    from permit_manager.forms import general_review_mapping
     p = ProjectProfile.load(_STLUKE)
+    mp = general_review_mapping(p)
     out = tmp_path / "gr.pdf"
-    res = fill_form(_whitby("commitment_general_review"), p, out)
-    assert fitz.open(out).page_count == 2
-    assert not any(f.placement == "signature" for f in res.filled)
+    res = fill_form(mp, p, out)
+    doc = fitz.open(out)
+    assert doc.page_count == 2
+    w = {x.field_name: x for pg in doc for x in pg.widgets()}
+    assert len(w) == 93                                   # still a live form
+    # page 2 = Part B continued: header + blocks 5-6 only, no Part A
+    assert "PART B \u2013 CONTINUED" in doc[1].get_text()
+    assert "PART A" not in doc[1].get_text() and "Owner" not in doc[1].get_text()
+    # consultants in checkbox order; block 5 (site services) on page 2
+    assert w["B1_Architectural"].field_value not in ("Off", False)
+    assert w["B5_SiteServices"].field_value not in ("Off", False)
+    assert w["B5_ConsultantName"].field_value.startswith("Monument")
+    # unknown signer -> company + address only
+    assert w["B3_PrintName"].field_value in ("", None)
+    # signatures and dates never written; unused block 6 not reported
+    assert not w["B1_Signature"].field_value and not w["A_OwnerDate"].field_value
+    assert not any(b.label.startswith("Part B6") for b in res.blank)
+    # chosen font size is stored on the field so every viewer agrees
+    assert w["A_OwnerName"].text_fontsize == 9
+
+
+def test_general_review_not_used_for_toronto():
+    import pytest
+    from permit_manager.forms import general_review_mapping
+    p = ProjectProfile.load(_STLUKE)
+    p.municipality.name = "City of Toronto"
+    with pytest.raises(ValueError):
+        general_review_mapping(p)

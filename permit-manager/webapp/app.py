@@ -24,10 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]          # permit-manager/
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # for claude_helper
 
-from permit_manager import introspect as I          # noqa: E402
-from permit_manager import mapping as M              # noqa: E402
-from permit_manager import fill as F                 # noqa: E402
-from permit_manager.review import assumption_summary # noqa: E402
+from permit_manager import forms as FORMS            # noqa: E402
 from permit_manager.schema import ProjectProfile, resolve_path  # noqa: E402
 from permit_manager.tracker import STATUSES, SignatureRecord, Tracker  # noqa: E402
 from permit_manager import outreach as O             # noqa: E402
@@ -49,9 +46,9 @@ RESEARCH_FIELDS = [
 
 PROJECTS = ROOT / "data" / "projects"
 MAPPINGS = ROOT / "mappings"
-EABO_BLANK = ROOT / "forms/blank/ontario_eabo/owner_commitment_general_review.pdf"
-EABO_SLUG = "owner_commitment_general_review"
-EABO_TITLE = "Owner Commitment to Have General Review Undertaken"
+# Standard Ontario Commitment to General Review (fillable EABO base form, Part B
+# continued on page 2) - used for every project outside the City of Toronto.
+EABO_TITLE = "Commitment to General Review by Architect and Engineer"
 
 app = Flask(__name__)
 
@@ -79,19 +76,7 @@ def tracker_for(pid: str) -> Tracker:
 
 
 def eabo_form_id(muni: str) -> str:
-    return M.form_id(M._slug(muni or "ontario"), EABO_SLUG)
-
-
-def ensure_mapping(muni: str) -> dict:
-    """Build (or reuse) the overlay mapping for this municipality's EABO form."""
-    fid = eabo_form_id(muni)
-    path = M.cache_path(MAPPINGS, fid)
-    intro = I.introspect(EABO_BLANK)
-    if not path.exists() or M.is_stale(M.load_mapping(path), intro):
-        mp = M.build_eabo_overlay_mapping(intro, municipality=muni or "Ontario",
-                                          form_title=EABO_TITLE)
-        M.save_mapping(path, mp)
-    return M.load_mapping(path)
+    return FORMS.GENERAL_REVIEW_MAPPING.stem      # same base form everywhere but Toronto
 
 
 def set_path(d: dict, dotted: str, value):
@@ -282,12 +267,12 @@ def project(pid: str):
 def fill(pid: str):
     p = load_profile(pid)
     fid = eabo_form_id(p.municipality.name)
-    mp = ensure_mapping(p.municipality.name)
+    try:
+        mp = FORMS.general_review_mapping(p)
+    except ValueError as e:                       # e.g. City of Toronto
+        return str(e), 400
     fdir = project_dir(pid) / "filled"
-    out_pdf = fdir / f"{fid}.pdf"
-    res = F.fill_overlay(mp, p, out_pdf, mapping_source="cached")
-    F.render_preview(out_pdf, fdir / f"{fid}.preview.png")
-    (fdir / f"{fid}.summary.txt").write_text(assumption_summary(res, mp))
+    res = FORMS.fill_and_review(mp, p, fdir)["result"]   # pdf, previews, summary
     # persist the fields left blank for manual entry, for the inline editor
     # simple scalar gaps only (skip composite/computed targets like *.__oneline__)
     blanks = [{"label": b.label, "target": b.target}

@@ -1,0 +1,790 @@
+{
+  "form_id": "ontario__commitment_general_review",
+  "municipality": "Ontario (all municipalities except the City of Toronto)",
+  "form_title": "Commitment to General Review by Architect and Engineer",
+  "source_pdf": "forms/blank/ontario/commitment_general_review_eabo_fillable.pdf",
+  "pdf_sha256": "2839bdf899fefb3b064fd63f8479b8f4e5621f30a062e5886236c128924d72e8",
+  "created": "2026-11-02",
+  "mapping_version": 2,
+  "fill_strategy": "acroform",
+  "layout": "eabo-2008-fillable",
+  "consultant_blocks": 6,
+  "fields": [
+    {
+      "pdf_field": "A_ProjectDescription",
+      "label": "Part A: Project Description",
+      "target": "project_name",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_PermitApplicationNo",
+      "label": "Part A: Permit Application No.",
+      "target": "permit.application_number",
+      "font_size": 9.0,
+      "optional": true
+    },
+    {
+      "pdf_field": "A_AddressOfProject",
+      "label": "Part A: Address of Project",
+      "target": "property_address.__oneline__",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_Municipality",
+      "label": "Part A: Municipality",
+      "target": "municipality.name",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_OwnerName",
+      "label": "Part A: Owner's Name",
+      "target": "owner.company",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_OwnerDate",
+      "label": "Part A: Owner - Date",
+      "protected": true
+    },
+    {
+      "pdf_field": "A_OwnerAddress",
+      "label": "Part A: Owner's Address",
+      "target": "owner.address.__oneline__",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_OwnerTelephone",
+      "label": "Part A: Owner's Telephone",
+      "target": "owner.phone",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_OwnerSignature",
+      "label": "Part A: Signature of Owner",
+      "protected": true
+    },
+    {
+      "pdf_field": "A_OwnerPrintName",
+      "label": "Part A: Owner - Print Name",
+      "target": "owner.name",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_OwnerFax",
+      "label": "Part A: Owner's Fax",
+      "target": "owner.fax",
+      "font_size": 9.0,
+      "optional": true
+    },
+    {
+      "pdf_field": "A_Coordinator",
+      "label": "Part A: Coordinator of the work of all consultants",
+      "target": "coordinator.company",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_CoordinatorTelephone",
+      "label": "Part A: Coordinator - Telephone",
+      "target": "coordinator.phone",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_CoordinatorAddress",
+      "label": "Part A: Coordinator - Address",
+      "target": "coordinator.address.__oneline__",
+      "font_size": 9.0
+    },
+    {
+      "pdf_field": "A_CoordinatorFax",
+      "label": "Part A: Coordinator - Fax",
+      "target": "coordinator.fax",
+      "font_size": 9.0,
+      "optional": true
+    },
+    {
+      "pdf_field": "B1_Architectural",
+      "label": "Part B1: ARCHITECTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.0.discipline",
+        "equals": "ARCHITECTURAL"
+      },
+      "group_label": "Part B1: discipline",
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Structural",
+      "label": "Part B1: STRUCTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.0.discipline",
+        "equals": "STRUCTURAL"
+      },
+      "group_label": "Part B1: discipline",
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Mechanical",
+      "label": "Part B1: MECHANICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.0.discipline",
+        "equals": "MECHANICAL"
+      },
+      "group_label": "Part B1: discipline",
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Electrical",
+      "label": "Part B1: ELECTRICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.0.discipline",
+        "equals": "ELECTRICAL"
+      },
+      "group_label": "Part B1: discipline",
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_SiteServices",
+      "label": "Part B1: SITE SERVICES",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.0.discipline",
+        "equals": "SITE SERVICES"
+      },
+      "group_label": "Part B1: discipline",
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Other",
+      "label": "Part B1: OTHER",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.0.discipline",
+        "equals": "OTHER"
+      },
+      "group_label": "Part B1: discipline",
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_OtherDescription",
+      "label": "Part B1: Other (describe)",
+      "target": "consultants.0.discipline_other",
+      "font_size": 8.5,
+      "requires": "consultants.0",
+      "optional": true
+    },
+    {
+      "pdf_field": "B1_ConsultantName",
+      "label": "Part B1: Consultant Name",
+      "target": "consultants.0.company",
+      "font_size": 8.5,
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Signature",
+      "label": "Part B1: Signature",
+      "protected": true,
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_PrintName",
+      "label": "Part B1: Print Name",
+      "target": "consultants.0.name",
+      "font_size": 8.5,
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Date",
+      "label": "Part B1: Date",
+      "protected": true,
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Telephone",
+      "label": "Part B1: Telephone",
+      "target": "consultants.0.phone",
+      "font_size": 8.5,
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B1_Address",
+      "label": "Part B1: Address",
+      "target": "consultants.0.address.__oneline__",
+      "font_size": 8.5,
+      "requires": "consultants.0"
+    },
+    {
+      "pdf_field": "B2_Architectural",
+      "label": "Part B2: ARCHITECTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.1.discipline",
+        "equals": "ARCHITECTURAL"
+      },
+      "group_label": "Part B2: discipline",
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Structural",
+      "label": "Part B2: STRUCTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.1.discipline",
+        "equals": "STRUCTURAL"
+      },
+      "group_label": "Part B2: discipline",
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Mechanical",
+      "label": "Part B2: MECHANICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.1.discipline",
+        "equals": "MECHANICAL"
+      },
+      "group_label": "Part B2: discipline",
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Electrical",
+      "label": "Part B2: ELECTRICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.1.discipline",
+        "equals": "ELECTRICAL"
+      },
+      "group_label": "Part B2: discipline",
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_SiteServices",
+      "label": "Part B2: SITE SERVICES",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.1.discipline",
+        "equals": "SITE SERVICES"
+      },
+      "group_label": "Part B2: discipline",
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Other",
+      "label": "Part B2: OTHER",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.1.discipline",
+        "equals": "OTHER"
+      },
+      "group_label": "Part B2: discipline",
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_OtherDescription",
+      "label": "Part B2: Other (describe)",
+      "target": "consultants.1.discipline_other",
+      "font_size": 8.5,
+      "requires": "consultants.1",
+      "optional": true
+    },
+    {
+      "pdf_field": "B2_ConsultantName",
+      "label": "Part B2: Consultant Name",
+      "target": "consultants.1.company",
+      "font_size": 8.5,
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Signature",
+      "label": "Part B2: Signature",
+      "protected": true,
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_PrintName",
+      "label": "Part B2: Print Name",
+      "target": "consultants.1.name",
+      "font_size": 8.5,
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Date",
+      "label": "Part B2: Date",
+      "protected": true,
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Telephone",
+      "label": "Part B2: Telephone",
+      "target": "consultants.1.phone",
+      "font_size": 8.5,
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B2_Address",
+      "label": "Part B2: Address",
+      "target": "consultants.1.address.__oneline__",
+      "font_size": 8.5,
+      "requires": "consultants.1"
+    },
+    {
+      "pdf_field": "B3_Architectural",
+      "label": "Part B3: ARCHITECTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.2.discipline",
+        "equals": "ARCHITECTURAL"
+      },
+      "group_label": "Part B3: discipline",
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Structural",
+      "label": "Part B3: STRUCTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.2.discipline",
+        "equals": "STRUCTURAL"
+      },
+      "group_label": "Part B3: discipline",
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Mechanical",
+      "label": "Part B3: MECHANICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.2.discipline",
+        "equals": "MECHANICAL"
+      },
+      "group_label": "Part B3: discipline",
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Electrical",
+      "label": "Part B3: ELECTRICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.2.discipline",
+        "equals": "ELECTRICAL"
+      },
+      "group_label": "Part B3: discipline",
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_SiteServices",
+      "label": "Part B3: SITE SERVICES",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.2.discipline",
+        "equals": "SITE SERVICES"
+      },
+      "group_label": "Part B3: discipline",
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Other",
+      "label": "Part B3: OTHER",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.2.discipline",
+        "equals": "OTHER"
+      },
+      "group_label": "Part B3: discipline",
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_OtherDescription",
+      "label": "Part B3: Other (describe)",
+      "target": "consultants.2.discipline_other",
+      "font_size": 8.5,
+      "requires": "consultants.2",
+      "optional": true
+    },
+    {
+      "pdf_field": "B3_ConsultantName",
+      "label": "Part B3: Consultant Name",
+      "target": "consultants.2.company",
+      "font_size": 8.5,
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Signature",
+      "label": "Part B3: Signature",
+      "protected": true,
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_PrintName",
+      "label": "Part B3: Print Name",
+      "target": "consultants.2.name",
+      "font_size": 8.5,
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Date",
+      "label": "Part B3: Date",
+      "protected": true,
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Telephone",
+      "label": "Part B3: Telephone",
+      "target": "consultants.2.phone",
+      "font_size": 8.5,
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B3_Address",
+      "label": "Part B3: Address",
+      "target": "consultants.2.address.__oneline__",
+      "font_size": 8.5,
+      "requires": "consultants.2"
+    },
+    {
+      "pdf_field": "B4_Architectural",
+      "label": "Part B4: ARCHITECTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.3.discipline",
+        "equals": "ARCHITECTURAL"
+      },
+      "group_label": "Part B4: discipline",
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Structural",
+      "label": "Part B4: STRUCTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.3.discipline",
+        "equals": "STRUCTURAL"
+      },
+      "group_label": "Part B4: discipline",
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Mechanical",
+      "label": "Part B4: MECHANICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.3.discipline",
+        "equals": "MECHANICAL"
+      },
+      "group_label": "Part B4: discipline",
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Electrical",
+      "label": "Part B4: ELECTRICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.3.discipline",
+        "equals": "ELECTRICAL"
+      },
+      "group_label": "Part B4: discipline",
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_SiteServices",
+      "label": "Part B4: SITE SERVICES",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.3.discipline",
+        "equals": "SITE SERVICES"
+      },
+      "group_label": "Part B4: discipline",
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Other",
+      "label": "Part B4: OTHER",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.3.discipline",
+        "equals": "OTHER"
+      },
+      "group_label": "Part B4: discipline",
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_OtherDescription",
+      "label": "Part B4: Other (describe)",
+      "target": "consultants.3.discipline_other",
+      "font_size": 8.5,
+      "requires": "consultants.3",
+      "optional": true
+    },
+    {
+      "pdf_field": "B4_ConsultantName",
+      "label": "Part B4: Consultant Name",
+      "target": "consultants.3.company",
+      "font_size": 8.5,
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Signature",
+      "label": "Part B4: Signature",
+      "protected": true,
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_PrintName",
+      "label": "Part B4: Print Name",
+      "target": "consultants.3.name",
+      "font_size": 8.5,
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Date",
+      "label": "Part B4: Date",
+      "protected": true,
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Telephone",
+      "label": "Part B4: Telephone",
+      "target": "consultants.3.phone",
+      "font_size": 8.5,
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B4_Address",
+      "label": "Part B4: Address",
+      "target": "consultants.3.address.__oneline__",
+      "font_size": 8.5,
+      "requires": "consultants.3"
+    },
+    {
+      "pdf_field": "B5_Architectural",
+      "label": "Part B5: ARCHITECTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.4.discipline",
+        "equals": "ARCHITECTURAL"
+      },
+      "group_label": "Part B5: discipline",
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Structural",
+      "label": "Part B5: STRUCTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.4.discipline",
+        "equals": "STRUCTURAL"
+      },
+      "group_label": "Part B5: discipline",
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Mechanical",
+      "label": "Part B5: MECHANICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.4.discipline",
+        "equals": "MECHANICAL"
+      },
+      "group_label": "Part B5: discipline",
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Electrical",
+      "label": "Part B5: ELECTRICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.4.discipline",
+        "equals": "ELECTRICAL"
+      },
+      "group_label": "Part B5: discipline",
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_SiteServices",
+      "label": "Part B5: SITE SERVICES",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.4.discipline",
+        "equals": "SITE SERVICES"
+      },
+      "group_label": "Part B5: discipline",
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Other",
+      "label": "Part B5: OTHER",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.4.discipline",
+        "equals": "OTHER"
+      },
+      "group_label": "Part B5: discipline",
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_OtherDescription",
+      "label": "Part B5: Other (describe)",
+      "target": "consultants.4.discipline_other",
+      "font_size": 8.5,
+      "requires": "consultants.4",
+      "optional": true
+    },
+    {
+      "pdf_field": "B5_ConsultantName",
+      "label": "Part B5: Consultant Name",
+      "target": "consultants.4.company",
+      "font_size": 8.5,
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Signature",
+      "label": "Part B5: Signature",
+      "protected": true,
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_PrintName",
+      "label": "Part B5: Print Name",
+      "target": "consultants.4.name",
+      "font_size": 8.5,
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Date",
+      "label": "Part B5: Date",
+      "protected": true,
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Telephone",
+      "label": "Part B5: Telephone",
+      "target": "consultants.4.phone",
+      "font_size": 8.5,
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B5_Address",
+      "label": "Part B5: Address",
+      "target": "consultants.4.address.__oneline__",
+      "font_size": 8.5,
+      "requires": "consultants.4"
+    },
+    {
+      "pdf_field": "B6_Architectural",
+      "label": "Part B6: ARCHITECTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.5.discipline",
+        "equals": "ARCHITECTURAL"
+      },
+      "group_label": "Part B6: discipline",
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Structural",
+      "label": "Part B6: STRUCTURAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.5.discipline",
+        "equals": "STRUCTURAL"
+      },
+      "group_label": "Part B6: discipline",
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Mechanical",
+      "label": "Part B6: MECHANICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.5.discipline",
+        "equals": "MECHANICAL"
+      },
+      "group_label": "Part B6: discipline",
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Electrical",
+      "label": "Part B6: ELECTRICAL",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.5.discipline",
+        "equals": "ELECTRICAL"
+      },
+      "group_label": "Part B6: discipline",
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_SiteServices",
+      "label": "Part B6: SITE SERVICES",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.5.discipline",
+        "equals": "SITE SERVICES"
+      },
+      "group_label": "Part B6: discipline",
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Other",
+      "label": "Part B6: OTHER",
+      "on": "Yes",
+      "when": {
+        "target": "consultants.5.discipline",
+        "equals": "OTHER"
+      },
+      "group_label": "Part B6: discipline",
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_OtherDescription",
+      "label": "Part B6: Other (describe)",
+      "target": "consultants.5.discipline_other",
+      "font_size": 8.5,
+      "requires": "consultants.5",
+      "optional": true
+    },
+    {
+      "pdf_field": "B6_ConsultantName",
+      "label": "Part B6: Consultant Name",
+      "target": "consultants.5.company",
+      "font_size": 8.5,
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Signature",
+      "label": "Part B6: Signature",
+      "protected": true,
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_PrintName",
+      "label": "Part B6: Print Name",
+      "target": "consultants.5.name",
+      "font_size": 8.5,
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Date",
+      "label": "Part B6: Date",
+      "protected": true,
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Telephone",
+      "label": "Part B6: Telephone",
+      "target": "consultants.5.phone",
+      "font_size": 8.5,
+      "requires": "consultants.5"
+    },
+    {
+      "pdf_field": "B6_Address",
+      "label": "Part B6: Address",
+      "target": "consultants.5.address.__oneline__",
+      "font_size": 8.5,
+      "requires": "consultants.5"
+    }
+  ],
+  "unmapped_fields": []
+}

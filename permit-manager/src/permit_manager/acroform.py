@@ -19,6 +19,18 @@ Mapping entry shapes (``fields`` list of a cache file with fill_strategy
             If the target is unknown (None/empty) the box is left blank and
             reported as needing manual entry.
   protected {"pdf_field", "label", "protected": true}    never written
+
+Optional keys on any entry:
+  requires   profile path that must exist (e.g. "consultants.4") - when it
+             doesn't, the entry is skipped silently (unused Part B block)
+  optional   true -> left blank without being reported when there's no value
+  font_size  starting text size (shrinks from there if needed)
+
+Mapping-level keys:
+  consultant_blocks  number of Part B blocks on the form. Consultants are put
+             in checkbox order (Architectural first) and unknown-signer
+             consultants show company + address only; consultants beyond the
+             last block are reported, never dropped silently.
 """
 from __future__ import annotations
 
@@ -26,7 +38,7 @@ from pathlib import Path
 
 import fitz  # PyMuPDF
 
-from .fill import BlankField, FilledField, FillResult, _resolve_value
+from .fill import ROOT, BlankField, FilledField, FillResult, _prepare_fill_profile, _resolve_value
 from .schema import ProjectProfile, resolve_path
 
 MIN_FS = 6.0
@@ -50,14 +62,14 @@ def _wrap(text: str, width: float, fs: float) -> list[str]:
 
 
 def _fit(text: str, rect: fitz.Rect, start_fs: float, multiline: bool):
-    """Return (fontsize, multiline) that fits the whole text, or None."""
+    """Return (fontsize, wrapped) that fits the whole text, or None."""
     width = rect.width - 2 * PAD
     height = rect.height - PAD
     fs = start_fs
     while fs >= MIN_FS:
         if fitz.get_text_length(text, fontname="helv", fontsize=fs) <= width and "\n" not in text:
             if fs * 1.1 <= rect.height:          # single line fits
-                return fs, multiline
+                return fs, False
         n = len(_wrap(text, width, fs))            # try wrapping
         if n * fs * 1.18 <= height and n > 1:
             return fs, True
@@ -80,6 +92,18 @@ def _check(doc: fitz.Document, w, on_raw: str) -> None:
         doc.xref_set_key(w.xref, "V", name)
 
 
+def _pin_font_size(doc: fitz.Document, w, fs: float) -> None:
+    """Make sure the field's own /DA carries the chosen size. When a field is
+    split into a parent field + widget kid, PyMuPDF writes the size to the
+    appearance only and the field keeps its old /DA (often 0 = auto), so other
+    viewers regenerate the text at the wrong size."""
+    da = f"(0 0 0 rg /Helv {fs:g} Tf)"
+    doc.xref_set_key(w.xref, "DA", da)
+    kind, val = doc.xref_get_key(w.xref, "Parent")
+    if kind == "xref":
+        doc.xref_set_key(int(val.split()[0]), "DA", da)
+
+
 def _condition(profile: ProjectProfile, cond: dict):
     """True / False, or None when the target value is unknown."""
     val = resolve_path(profile, cond["target"])
@@ -96,8 +120,17 @@ def _condition(profile: ProjectProfile, cond: dict):
 
 def fill_acroform_widgets(mapping: dict, profile: ProjectProfile, out_path: str | Path,
                           *, mapping_source: str = "cached") -> FillResult:
-    doc = fitz.open(mapping["source_pdf"])
+    src = Path(mapping["source_pdf"])
+    doc = fitz.open(src if src.is_absolute() else ROOT / src)
     res = FillResult(output_pdf=str(out_path), mapping_source=mapping_source)
+
+    blocks = mapping.get("consultant_blocks")
+    if blocks:
+        profile = _prepare_fill_profile(profile)
+        for n, c in enumerate(profile.consultants[blocks:], start=blocks + 1):
+            res.blank.append(BlankField(
+                f"Consultant {n}: {c.discipline} - {c.company or '(no company)'}", "unmapped",
+                f"(form has {blocks} Part B blocks - needs another continuation page)"))
 
     # index widgets by field name (checkbox groups share a name). Keep the page
     # objects referenced - a widget becomes unusable once its page is collected.
@@ -114,6 +147,8 @@ def fill_acroform_widgets(mapping: dict, profile: ProjectProfile, out_path: str 
         if not ws:
             res.blank.append(BlankField(label, "unmapped", f"(field '{name}' not found)"))
             continue
+        if "requires" in entry and resolve_path(profile, entry["requires"]) is None:
+            continue                                  # e.g. unused Part B block
         if entry.get("protected"):
             res.blank.append(BlankField(label, "protected"))
             continue
@@ -146,25 +181,28 @@ def fill_acroform_widgets(mapping: dict, profile: ProjectProfile, out_path: str 
             target = entry["target"]
             value = _resolve_value(profile, target).strip()
         if not value:
-            res.blank.append(BlankField(label, "no-value", target))
+            if not entry.get("optional"):
+                res.blank.append(BlankField(label, "no-value", target))
             continue
 
         w = ws[0]
         multiline = bool(w.field_flags & fitz.PDF_TX_FIELD_IS_MULTILINE)
-        start = w.text_fontsize if w.text_fontsize and w.text_fontsize > 0 else DEFAULT_FS
+        start = (entry.get("font_size")
+                 or (w.text_fontsize if w.text_fontsize and w.text_fontsize > 0 else DEFAULT_FS))
         fit = _fit(value, w.rect, min(start, 11.0), multiline)
         if fit is None:
             res.blank.append(BlankField(label, "overflow", f"{target} = {value!r}"))
             continue
-        fs, need_multi = fit
-        if need_multi and not multiline:
+        fs, wrapped = fit
+        if wrapped and not multiline:
             w.field_flags |= fitz.PDF_TX_FIELD_IS_MULTILINE
         w.text_font = "Helv"
         w.text_fontsize = fs
         w.field_value = value
         w.update()
+        _pin_font_size(doc, w, fs)
         res.filled.append(FilledField(label, target, value,
-                                      placement="wrap-below" if need_multi else "inline"))
+                                      placement="wrap-below" if wrapped else "inline"))
 
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     doc.save(str(out_path), garbage=3, deflate=True)

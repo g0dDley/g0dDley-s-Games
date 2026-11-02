@@ -9,6 +9,22 @@ Jurisdiction: Ontario / OBC. Starting forms: the EABO *Owner Commitment to
 Have General Review Undertaken* (the "Owner Authorization") and the municipal
 *Application for a Permit to Construct or Demolish*.
 
+### Standard Commitment to General Review (Ontario, outside Toronto)
+
+`forms/blank/ontario/commitment_general_review_eabo_fillable.pdf` is the base
+form for **every Ontario project outside the City of Toronto** unless a project
+says otherwise. It is the EABO *Commitment to General Review by Architect and
+Engineer* made fully fillable (it stays editable after filling):
+
+* page 1 - the standard form (Part A + Part B blocks 1-4);
+* page 2 - *Part B - Continued*: the same header and rule, blocks 5-6 only.
+
+Consultants are placed in checkbox order (Architectural, Structural,
+Mechanical, Electrical, Site Services, Other); outside consultants whose signer
+isn't known show company + address only. Signatures and dates are never
+filled. Rebuild with `PYTHONPATH=src python scripts/build_general_review_base.py`;
+fill with `python -m permit_manager fill --project <id> --form ontario__commitment_general_review`.
+
 ## Core principle
 
 Nothing is finalised, sent, or marked-as-sent automatically. Every fill prints
